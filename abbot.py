@@ -637,11 +637,57 @@ class Abbot(discord.Client):
         return Response(":ok_hand: '{0} sent to all servers.".format(args), delete_after=20)
 
 # -----------
+# Secret-Gifter Event Commands
+# -----------
+    async def cmd_event(self, channel, author, permissions, leftover_args):
+        """
+        Usage:
+            {command_prefix}event <opt_in|address|size|status>
+
+        Opt-in, give your address, give your size, or check status of the event.
+        """
+        if len(leftover_args) == 0:
+            return Response("No options given.  Try again (see **?help event** for more details).")
+            
+        if leftover_args[0] == "opt_in":
+            return Response('Opting you in.')
+
+        elif leftover_args[0] == "address":
+            if len(leftover_args) < 2:
+                return Response("You must supply an address.")
+
+            # Separate each addres "line" by comma
+            address_lines = " ".join(leftover_args[1:]).split(",")
+            address_desc = 'Your address has been logged as:'
+            for line in address_lines:
+                address_desc += '\n\t{0}'.format(line.strip())
+            em = discord.Embed(title='Event: Address', description=address_desc, colour=0x7FFF00)
+            
+            return Response(em, embed=True, reply=False, delete_after=0)
+        elif leftover_args[0] == "size":
+            if len(leftover_args) < 2:
+                return Response("You must supply an size.")
+
+            em = discord.Embed(title='Event: Size', description='Your size logged as: {0}.'.format(" ".join(leftover_args[1:])), colour=0x7FFF00)
+            return Response(em, embed=True, reply=False, delete_after=0)
+
+        elif leftover_args[0] == "status":
+            await self.safe_send_message(
+                author, 'Status not yet implemented.',
+                expire_in=0,
+                also_delete=None
+                )
+
+            return Response('Status has been sent to you via personal message.', reply=True, delete_after=90, embed=False)
+        else:
+            return Response('Unrecognized *event* parameter "{0}"'.format(leftover_args[0]))
+
+# -----------
 # Events
 # -----------
     async def on_message(self, message):
         # TODO: Change the scope of this variable.
-        pmCommandList = ['joinserver', 'idea', 'help']
+        pmCommandList = ['joinserver', 'event', 'idea', 'help']
         await self.wait_until_ready()
 
         message_content = message.content.strip()
