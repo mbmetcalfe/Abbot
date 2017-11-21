@@ -1,6 +1,8 @@
 #!/usr/local/bin/python3.6
 import discord
 from discord.ext import commands
+from discord.ext.commands.bot import _get_variable
+
 from config import Config, ConfigDefaults
 from permissions import Permissions, PermissionsDefaults
 from utils import load_file, write_file, sane_round_int
@@ -14,8 +16,10 @@ import os
 import random
 import inflect
 import time
+import datetime
 import re
 import sys
+from functools import wraps
 from textwrap import dedent
 from constants import VERSION as BOTVERSION
 from constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
@@ -37,8 +41,6 @@ fh.setFormatter(formatter)
 # add the handlers to logger
 logger.addHandler(ch)
 logger.addHandler(fh)
-
-TOKEN = 'Mzc2MTY2NDE3OTAyMzM4MDU5.DN6b5g.3lts28dpeGGHlteJ5825Gl_lTNQ'
 
 description = '''I am Abbot.  A bot written in Python and discord.py'''
 bot = commands.Bot(command_prefix='?', description=description)
@@ -67,6 +69,20 @@ class Abbot(discord.Client):
         super().__init__()
         self.aiosession = aiohttp.ClientSession(loop=self.loop)
         self.http.user_agent += ' Abbot/%s' % BOTVERSION
+
+    # TODO: Add some sort of `denied` argument for a message to send when someone else tries to use it
+    def owner_only(func):
+        @wraps(func)
+        async def wrapper(self, *args, **kwargs):
+            # Only allow the owner to use these commands
+            orig_msg = _get_variable('message')
+
+            if not orig_msg or orig_msg.author.id == self.config.owner_id:
+                return await func(self, *args, **kwargs)
+            else:
+                raise exceptions.PermissionsError("only the owner can use this command", expire_in=30)
+
+        return wrapper
 
     def safe_print(self, content, *, end='\n', flush=True):
         sys.stdout.buffer.write((content + end).encode('utf-8', 'replace'))
@@ -256,8 +272,9 @@ class Abbot(discord.Client):
             traceback.print_exc()
 
     async def on_resumed(self):
-        for vc in self.the_voice_clients.values():
-            vc.main_ws = self.ws
+        self.safe_print("Resumed...")
+#        for vc in self.the_voice_clients.values():
+#            vc.main_ws = self.ws
 
     async def on_ready(self):
         print('\rConnected!  Abbot v%s\n' % BOTVERSION)
@@ -370,10 +387,10 @@ class Abbot(discord.Client):
                         dedent(cmd.__doc__),
                         command_prefix=self.config.command_prefix
                     ),
-                    delete_after=60
+                    delete_after=60 if channel != 'Direct Message' else 0
                 )
             else:
-                return Response("No such command", delete_after=10)
+                return Response("No such command.", delete_after=10 if channel != 'Direct Message' else 0)
 
         else:
             helpmsg = ""
@@ -396,7 +413,21 @@ class Abbot(discord.Client):
             #em.set_author(name=ctx.message.author.name, icon_url=ctx.message.author.avatar_url)
             em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
 
-            return Response(em, reply=False, embed=True, delete_after=60)
+            return Response(em, reply=False, embed=True, delete_after=60 if channel != 'Direct Message' else 0)
+
+    async def cmd_ping(self, channel, author, message, permissions):
+        """
+        Usage:
+            {command_prefix}ping
+        Ping command to test latency.
+        """
+        myTime = datetime.datetime.now()
+        timeDiff = myTime - message.timestamp
+        totalMs = ((timeDiff.seconds * 1000000) + timeDiff.microseconds) / 1000
+        
+        em = discord.Embed(title='Ping', description=':ping_pong: Pong {0}'.format(totalMs))
+        em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
+        return Response(em, reply=False, embed=True, delete_after=90)
 
     async def cmd_whoami(self, channel, author, message, permissions):
         """Show some stats about thyself."""
@@ -407,7 +438,7 @@ class Abbot(discord.Client):
     async def cmd_idea(self, channel, author, permissions, idea):
         """Adds an idea to the idea box."""
         logger.info('IDEA: {0} from {1}.'.format(idea, author.name))
-        return Response("Thanks for your submission", reply=True, delete_after=30)
+        return Response("Thanks for your submission", reply=True, delete_after=30 if channel != 'Direct Message' else 0)
 
     async def cmd_choose(self, channel, author, message, permissions, choices):
         """Chooses between multiple choices."""
@@ -415,6 +446,26 @@ class Abbot(discord.Client):
         self.safe_print("Choices: " % choices)
         self.safe_print("Choices: " % myChoices)
         return Response(random.choice(myChoices), reply=True)
+
+    async def cmd_pick(self, channel, author, message, server, permissions):
+        """Pick a random person from the server."""
+        pickMembers = []
+        await self.safe_send_message(channel, "Gathering all the people.")
+        await self.send_typing(channel)
+        await asyncio.sleep(5)
+        for member in server.members:
+            if not member.bot:
+                pickMembers.append(member.mention)
+
+        await self.safe_send_message(channel, "Ok, have all the people, let's see who is the lucky winner.  :drum:-roll please!")
+        await self.send_typing(channel)
+        await asyncio.sleep(3)
+        
+        if len(pickMembers) > 0:
+            em = discord.Embed(title='Random User Pick', description='{0} has requested to pick a random user.\n\n{1} was chosen!'.format(author.mention, random.choice(pickMembers)), colour=0x2e456b)
+            em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
+            return Response(em, reply=False, embed=True, delete_after=0)
+
 
     async def cmd_roll(self, channel, author, message, permissions, dice):
         """Rolls a dice in NdN format.\ne.g. 1d6 rolls one 6-sided die;\n2d20 rolls 2 20-sided dice"""
@@ -440,12 +491,157 @@ class Abbot(discord.Client):
         return Response(em, reply=False, embed=True)
 
     async def cmd_presence(self, channel, author, message):
+        """Set the bot's presence."""
         await self.update_presence(author, "test")
+
+# -----------
+# Owner-only commands
+# cmd_clean can be taken out of own_only when sanity checked to not break.
+# -----------
+    @owner_only
+    async def cmd_clean(self, message, channel, server, author, search_range=50):
+        """
+        Usage:
+            {command_prefix}clean [range]
+
+        Removes up to [range] messages the bot has posted in chat. Default: 50, Max: 1000
+        """
+
+        try:
+            float(search_range)  # lazy check
+            search_range = min(int(search_range), 1000)
+        except:
+            return Response("please enter a number.", reply=True, delete_after=8)
+
+        await self.safe_delete_message(message, quiet=True)
+
+        def is_possible_command_invoke(entry):
+            valid_call = any(
+                entry.content.startswith(prefix) for prefix in [self.config.command_prefix])  # can be expanded
+            return valid_call and not entry.content[1:2].isspace()
+
+        delete_invokes = True
+        delete_all = channel.permissions_for(author).manage_messages or self.config.owner_id == author.id
+
+        def check(message):
+            if is_possible_command_invoke(message) and delete_invokes:
+                return delete_all or message.author == author
+            return message.author == self.user
+
+        if self.user.bot:
+            if channel.permissions_for(server.me).manage_messages:
+                deleted = await self.purge_from(channel, check=check, limit=search_range, before=message)
+                return Response('Cleaned up {} message{}.'.format(len(deleted), 's' * bool(deleted)), delete_after=15)
+
+        deleted = 0
+        async for entry in self.logs_from(channel, search_range, before=message):
+            if entry == self.server_specific_data[channel.server]['last_np_msg']:
+                continue
+
+            if entry.author == self.user:
+                await self.safe_delete_message(entry)
+                deleted += 1
+                await asyncio.sleep(0.21)
+
+            if is_possible_command_invoke(entry) and delete_invokes:
+                if delete_all or entry.author == author:
+                    try:
+                        await self.delete_message(entry)
+                        await asyncio.sleep(0.21)
+                        deleted += 1
+
+                    except discord.Forbidden:
+                        delete_invokes = False
+                    except discord.HTTPException:
+                        pass
+
+        return Response('Cleaned up {} message{}.'.format(deleted, 's' * bool(deleted)), delete_after=15)
+
+    @owner_only
+    async def cmd_setname(self, leftover_args, name):
+        """
+        Usage:
+            {command_prefix}setname name
+
+        Changes the bot's username.
+        Note: This operation is limited by discord to twice per hour.
+        """
+
+        name = ' '.join([name, *leftover_args])
+
+        try:
+            await self.edit_profile(username=name)
+        except Exception as e:
+            raise exceptions.CommandError(e, expire_in=20)
+
+        return Response(":ok_hand:", delete_after=20)
+
+    @owner_only
+    async def cmd_setnick(self, server, channel, leftover_args, nick):
+        """
+        Usage:
+            {command_prefix}setnick nick
+
+        Changes the bot's nickname.
+        """
+
+        if not channel.permissions_for(server.me).change_nickname:
+            raise exceptions.CommandError("Unable to change nickname: no permission.")
+
+        nick = ' '.join([nick, *leftover_args])
+
+        try:
+            await self.change_nickname(server.me, nick)
+        except Exception as e:
+            raise exceptions.CommandError(e, expire_in=20)
+
+        return Response(":ok_hand:", delete_after=20)
+
+    @owner_only
+    async def cmd_setavatar(self, message, url=None):
+        """
+        Usage:
+            {command_prefix}setavatar [url]
+
+        Changes the bot's avatar.
+        Attaching a file and leaving the url parameter blank also works.
+        """
+
+        if message.attachments:
+            thing = message.attachments[0]['url']
+        else:
+            thing = url.strip('<>')
+
+        try:
+            with aiohttp.Timeout(10):
+                async with self.aiosession.get(thing) as res:
+                    await self.edit_profile(avatar=await res.read())
+
+        except Exception as e:
+            raise exceptions.CommandError("Unable to change avatar: %s" % e, expire_in=20)
+
+        return Response(":ok_hand:", delete_after=20)
+
+    @owner_only
+    async def cmd_sendall(self, args, leftover_args):
+        """
+        Usage:
+            {command_prefix}sendall <message>
+        Sends a message to all servers the bot is on
+        """
+        if leftover_args:
+            args = ' '.join([args, *leftover_args])
+        for s in self.servers:
+            await self.safe_send_message(s, args)
+        
+        return Response(":ok_hand: '{0} sent to all servers.".format(args), delete_after=20)
 
 # -----------
 # Events
 # -----------
     async def on_message(self, message):
+        # TODO: Change the scope of this variable.
+        pmCommandList = ['joinserver', 'idea', 'help']
         await self.wait_until_ready()
 
         message_content = message.content.strip()
@@ -467,8 +663,8 @@ class Abbot(discord.Client):
             return
 
         if message.channel.is_private:
-            if not (message.author.id == self.config.owner_id and command == 'joinserver'):
-                await self.send_message(message.channel, 'You cannot use this bot in private messages.')
+            if not (message.author.id == self.config.owner_id and (command in pmCommandList)):
+                await self.send_message(message.channel, 'You cannot use the **{0}** command in a private message.'.format(command))
                 return
 
         if message.author.id in self.blacklist and message.author.id != self.config.owner_id:
