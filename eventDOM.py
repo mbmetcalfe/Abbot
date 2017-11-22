@@ -17,7 +17,7 @@ def replaceText(node, newText):
 
     node.firstChild.replaceWholeText(newText)
 
-def main():
+def old_main():
     # Open XML document using minidom parser
     DOMTree = xml.dom.minidom.parse("2017_Event.xml")
     event = DOMTree.documentElement
@@ -56,5 +56,35 @@ def main():
         if giftee.hasChildNodes() and len(giftee.childNodes) > 0:
             print("Giftee: {0}".format(giftee.childNodes[0].data))
 
+def main():
+# use the parse() function to load and parse an XML file
+   doc = xml.dom.minidom.parse("2017_Event.xml");
+  
+# print out the document node and the name of the first child tag
+   print(doc.nodeName)
+   print(doc.firstChild.tagName)
+  
+# get a list of XML tags from the document and print each one
+   participants = doc.getElementsByTagName("participant")
+   print("%d Participants:" % participants.length)
+   for participant in participants:
+     print("Name: {0}; Discord Id: {1}.".format(participant.getAttribute("name"), participant.getAttribute("discord_id")))
+     giftee = participant.getElementsByTagName('giftee')
+     if len(giftee) == 0: # no giftee tag yet, so add one
+##         newGiftee = doc.createElement("giftee")
+##         newGiftee.setAttribute("name", "BigData")
+        newGiftee = doc.createTextNode("giftee")
+        participant.appendChild(newGiftee)
+     else:
+         print("\tGiftee: {0}.".format(giftee))
+   print(" ")
+##   expertise = doc.getElementsByTagName("expertise")
+##   print "%d expertise:" % expertise.length
+##   for skill in expertise:
+##     print skill.getAttribute("name")
+   fileHandle = open("test.xml","wb")
+   doc.writexml(fileHandle)
+   fileHandle.close()
+    
 if __name__ == '__main__':
     main()
