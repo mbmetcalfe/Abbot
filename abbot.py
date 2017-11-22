@@ -353,15 +353,18 @@ class Abbot(discord.Client):
             await self._autojoin_channels(autojoin_channels)
 
         print()
+        
+        await self.update_presence("Awating orders|{0}help".format(self.config.command_prefix))
         # t-t-th-th-that's all folks!
 
-    async def update_presence(author, *, description):
+    async def update_presence(self, message):
         game = None
-
         if self.user.bot:
-            game = discord.Game(name=description)
+            game = discord.Game(name=message)
+        else:
+            game = discord.Game(name="Huh?")
 
-        await self.change_presence(game)
+        await self.change_presence(game=game, status=None, afk=False)
 
 # -----------
 # Commands
@@ -381,7 +384,7 @@ class Abbot(discord.Client):
             if cmd:
                 return Response(
                     "```\n{}```".format(
-                        dedent(cmd.__doc__),
+                        dedent(cmd.__doc__.replace('{command_prefix}', self.config.command_prefix)),
                         command_prefix=self.config.command_prefix
                     ),
                     delete_after=60 if channel != 'Direct Message' else 0
@@ -396,7 +399,7 @@ class Abbot(discord.Client):
 
             for att in dir(self):
                 if att.startswith('cmd_') and att != 'cmd_help':
-                    command_name = att.replace('cmd_', '').lower()
+                    command_name = att.replace('cmd_', self.config.command_prefix).lower()
                     if (commandCount % 4) == 0:
                         helpmsg += "\n"
                     commandCount += 1
@@ -442,16 +445,23 @@ class Abbot(discord.Client):
         logger.info('IDEA: {0} from {1}.'.format(idea, author.name))
         return Response("Thanks for your submission", reply=True, delete_after=30 if channel != 'Direct Message' else 0)
 
-    async def cmd_choose(self, channel, author, message, permissions, choices):
+    async def cmd_choose(self, channel, author, message, permissions, leftover_args):
         """
-        Chooses between multiple choices.
+        Chooses between multiple choices.  Separate each choice by a comma.
         Usage:
-            {command_prefix}?choose <choice1, choice2, ..., choiceN>
+            {command_prefix}choose <choice1, choice2, ..., choiceN>
         """
-        myChoices = choices.split(",")
-        self.safe_print("Choices: " % choices)
-        self.safe_print("Choices: " % myChoices)
-        return Response(random.choice(myChoices), reply=True)
+        
+        userChoices = " ".join(leftover_args).split(",")
+        i = 1
+        choices = ""
+        for choice in userChoices:
+            choices += '\n\t**{0}**: {1}'.format(i, choice.strip())
+            i += 1
+
+        em = discord.Embed(title='Choose', description='Choices: {0}\n\nRandomly chosen item: **{1}**'.format(choices, random.choice(userChoices)))
+        em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
+        return Response(em, reply=False, embed=True, delete_after=90)
 
     async def cmd_pick(self, channel, author, message, server, permissions):
         """
@@ -503,15 +513,8 @@ class Abbot(discord.Client):
         await asyncio.sleep(rolls * 3) # simulate rolling the dice (~3 seconds/dice)
 
         em = discord.Embed(title='Dice Roll', description=author.mention + ' has rolled ' + wordRolls + ' ' + str(limit) + '-sided dice.\n\nThe result is: ' + result, colour=0x2e456b)
-        #em.set_author(name=ctx.message.author.name, icon_url=ctx.message.author.avatar_url)
-        
         em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
-        #await bot.send_message(ctx.message.channel, embed=em)
         return Response(em, reply=False, embed=True)
-
-    async def cmd_presence(self, channel, author, message):
-        """Set the bot's presence."""
-        await self.update_presence(author, "test")
 
 # -----------
 # Owner-only commands
@@ -574,6 +577,14 @@ class Abbot(discord.Client):
                         pass
 
         return Response('Cleaned up {} message{}.'.format(deleted, 's' * bool(deleted)), delete_after=15)
+
+    @owner_only
+    async def cmd_presence(self, server, channel, leftover_args):
+        """Set the bot's now playing status."""
+        text = " ".join(leftover_args)
+        await self.update_presence(text)
+        
+        return Response(":ok_hand:", delete_after=20)
 
     @owner_only
     async def cmd_setname(self, leftover_args, name):
