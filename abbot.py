@@ -45,9 +45,6 @@ logger.addHandler(fh)
 description = '''I am Abbot.  A bot written in Python and discord.py'''
 bot = commands.Bot(command_prefix='?', description=description)
 
-take_over_world = 'What are we going to do tonight?'
-greet = 'Hello there'
-
 class Response:
     def __init__(self, content, reply=False, embed=False, delete_after=0):
         self.content = content
@@ -371,12 +368,12 @@ class Abbot(discord.Client):
 # -----------
     async def cmd_help(self, channel, author, command=None):
         """
-        Usage:
-            {command_prefix}help [command]
-
         Prints a help message.
         If a command is specified, it prints a help message for that command.
         Otherwise, it lists the available commands.
+
+        Usage:
+            {command_prefix}help [command]
         """
 
         if command:
@@ -400,26 +397,23 @@ class Abbot(discord.Client):
             for att in dir(self):
                 if att.startswith('cmd_') and att != 'cmd_help':
                     command_name = att.replace('cmd_', '').lower()
-                    #commands.append("{}{}".format(self.config.command_prefix, command_name))
                     if (commandCount % 4) == 0:
                         helpmsg += "\n"
                     commandCount += 1
-                    #helpmsg += "{0} - \t{1}".format(command_name, dedent(command_name.__doc__))
                     helpmsg += "{0:30}".format(command_name)
 
             helpmsg += "\n\nhttps://github.com/mbmetcalfe/Abbot/wiki/Commands"
 
             em = discord.Embed(title='Commands', description=helpmsg, colour=0x2e456b)
-            #em.set_author(name=ctx.message.author.name, icon_url=ctx.message.author.avatar_url)
             em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
 
             return Response(em, reply=False, embed=True, delete_after=60 if channel != 'Direct Message' else 0)
 
     async def cmd_ping(self, channel, author, message, permissions):
         """
+        Ping command to test latency.
         Usage:
             {command_prefix}ping
-        Ping command to test latency.
         """
         myTime = datetime.datetime.now()
         timeDiff = myTime - message.timestamp
@@ -430,25 +424,41 @@ class Abbot(discord.Client):
         return Response(em, reply=False, embed=True, delete_after=90)
 
     async def cmd_whoami(self, channel, author, message, permissions):
-        """Show some stats about thyself."""
+        """
+        Show some stats about thyself.
+        Usage:
+            {command_prefix}whoami
+        """
         role_names = [role.name for role in author.roles]    
         whoamiMsg = "%s:\n\tRoles: %s\n\tTop Role: %s\n\tStatus: %s\n\tGame: %s\n\tJoined: %s" % (author.mention, role_names, author.top_role, author.status, author.game, author.joined_at)
         return Response(whoamiMsg, reply=False, delete_after=60)
 
     async def cmd_idea(self, channel, author, permissions, idea):
-        """Adds an idea to the idea box."""
+        """
+        Adds an idea to the idea box.
+        Usage:
+            {command_prefix}idea <text>
+        """
         logger.info('IDEA: {0} from {1}.'.format(idea, author.name))
         return Response("Thanks for your submission", reply=True, delete_after=30 if channel != 'Direct Message' else 0)
 
     async def cmd_choose(self, channel, author, message, permissions, choices):
-        """Chooses between multiple choices."""
+        """
+        Chooses between multiple choices.
+        Usage:
+            {command_prefix}?choose <choice1, choice2, ..., choiceN>
+        """
         myChoices = choices.split(",")
         self.safe_print("Choices: " % choices)
         self.safe_print("Choices: " % myChoices)
         return Response(random.choice(myChoices), reply=True)
 
     async def cmd_pick(self, channel, author, message, server, permissions):
-        """Pick a random person from the server."""
+        """
+        Pick a random user from the server.
+        Usage:
+            {command_prefix}pick
+        """
         pickMembers = []
         await self.safe_send_message(channel, "Gathering all the people.")
         await self.send_typing(channel)
@@ -468,7 +478,16 @@ class Abbot(discord.Client):
 
 
     async def cmd_roll(self, channel, author, message, permissions, dice):
-        """Rolls a dice in NdN format.\ne.g. 1d6 rolls one 6-sided die;\n2d20 rolls 2 20-sided dice"""
+        """
+        Rolls a dice in NdN format.
+        Usage:
+            {command_prefix}roll XdY
+        Examples:
+            ?roll 1d6 
+            rolls one 6-sided die
+            ?roll 2d20
+            rolls 2 20-sided dice.
+            """
         try:
             rolls, limit = map(int, dice.split('d'))
         except Exception:
@@ -501,10 +520,9 @@ class Abbot(discord.Client):
     @owner_only
     async def cmd_clean(self, message, channel, server, author, search_range=50):
         """
+        Removes up to [range] messages the bot has posted in chat. Default: 50, Max: 1000
         Usage:
             {command_prefix}clean [range]
-
-        Removes up to [range] messages the bot has posted in chat. Default: 50, Max: 1000
         """
 
         try:
@@ -560,11 +578,10 @@ class Abbot(discord.Client):
     @owner_only
     async def cmd_setname(self, leftover_args, name):
         """
-        Usage:
-            {command_prefix}setname name
-
         Changes the bot's username.
         Note: This operation is limited by discord to twice per hour.
+        Usage:
+            {command_prefix}setname name
         """
 
         name = ' '.join([name, *leftover_args])
@@ -579,10 +596,9 @@ class Abbot(discord.Client):
     @owner_only
     async def cmd_setnick(self, server, channel, leftover_args, nick):
         """
+        Changes the bot's nickname.
         Usage:
             {command_prefix}setnick nick
-
-        Changes the bot's nickname.
         """
 
         if not channel.permissions_for(server.me).change_nickname:
@@ -600,11 +616,10 @@ class Abbot(discord.Client):
     @owner_only
     async def cmd_setavatar(self, message, url=None):
         """
-        Usage:
-            {command_prefix}setavatar [url]
-
         Changes the bot's avatar.
         Attaching a file and leaving the url parameter blank also works.
+        Usage:
+            {command_prefix}setavatar [url]
         """
 
         if message.attachments:
@@ -625,9 +640,9 @@ class Abbot(discord.Client):
     @owner_only
     async def cmd_sendall(self, args, leftover_args):
         """
+        Sends a message to all servers the bot is on
         Usage:
             {command_prefix}sendall <message>
-        Sends a message to all servers the bot is on
         """
         if leftover_args:
             args = ' '.join([args, *leftover_args])
@@ -641,10 +656,20 @@ class Abbot(discord.Client):
 # -----------
     async def cmd_event(self, channel, author, permissions, leftover_args):
         """
+        Opt-in, give your address, give your size, or check status of the event.
         Usage:
             {command_prefix}event <opt_in|address|size|status>
-
-        Opt-in, give your address, give your size, or check status of the event.
+        Sub-Commands:
+            opt_in: Opts you into the event.
+                Usage: {command_prefix}event opt_in
+            address: Adds your mailing address.  Separate each "line" of your address by a comma.
+                Usage: {command_prefix}event address <address line1, address line2, city, province, postal code>
+                Example: {command_prefrix}event address 55 My Street, P.O. Box 123, City Ville, NS, A2B3B4
+            size: Adds your shirt size.
+                Usage: {command_prefix}event size Your Size
+                Example: {command_prefix}event size Medium
+            status: reports your status for the event.
+                Usage: {command_prefix}event status
         """
         if len(leftover_args) == 0:
             return Response("No options given.  Try again (see **?help event** for more details).")
@@ -837,7 +862,6 @@ class Abbot(discord.Client):
             if self.config.debug_mode:
                 await self.safe_send_message(message.channel, '```\n%s\n```' % traceback.format_exc())
 
-#os.system('clear')
 if __name__ == '__main__':
     bot = Abbot()
     bot.run()
