@@ -529,15 +529,15 @@ class Abbot(discord.Client):
         player_win = False if winner < 3 else True
         
         # print results
-        self.safe_print("Player chooses {0}.  I choose {1}.".format(guess.title(), GAME_OPTIONS[computerNumber].title()))
+        self.safe_print("Player chooses {0}.  I choose {1}.".format(item.title(), GAME_OPTIONS[computerNumber].title()))
         if player_win:
              winVerb = VERBS[playerNumber][computerNumber]
-             self.safe_print("{0} {2} {1}.  Player wins!\n".format(guess.title(), GAME_OPTIONS[computerNumber].title(), winVerb))
+             self.safe_print("{0} {2} {1}.  Player wins!\n".format(item.title(), GAME_OPTIONS[computerNumber].title(), winVerb))
         elif computerNumber == playerNumber:
              self.safe_print("We tie!\n")
         else:
              winVerb = VERBS[computerNumber][playerNumber]
-             self.safe_print("{0} {2} {1}.  I win!\n".format(GAME_OPTIONS[computerNumber].title(), guess.title(), winVerb))
+             self.safe_print("{0} {2} {1}.  I win!\n".format(GAME_OPTIONS[computerNumber].title(), item.title(), winVerb))
 
 # -----------
 # Owner-only commands
