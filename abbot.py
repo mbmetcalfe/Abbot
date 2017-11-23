@@ -24,27 +24,6 @@ from textwrap import dedent
 from constants import VERSION as BOTVERSION
 from constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 
-
-# Setup logging
-logger = logging.getLogger('abbot')
-logger.setLevel(logging.DEBUG)
-# create file handler which logs even debug messages
-fh = logging.FileHandler('abbot.log')
-fh.setLevel(logging.DEBUG)
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s:%(message)s')
-ch.setFormatter(formatter)
-fh.setFormatter(formatter)
-# add the handlers to logger
-logger.addHandler(ch)
-logger.addHandler(fh)
-
-description = '''I am Abbot.  A bot written in Python and discord.py'''
-bot = commands.Bot(command_prefix='?', description=description)
-
 class Response:
     def __init__(self, content, reply=False, embed=False, delete_after=0):
         self.content = content
@@ -90,7 +69,7 @@ class Abbot(discord.Client):
             return await super().send_typing(destination)
         except discord.Forbidden:
             if self.config.debug_mode:
-                print("Could not send typing to %s, no permssion" % destination)
+                logger.debug("Could not send typing to %s, no permssion" % destination)
 
     @staticmethod
     def _fixg(x, dp=2):
@@ -111,20 +90,20 @@ class Abbot(discord.Client):
 
         for channel in channels:
             if channel.server in joined_servers:
-                print("Already joined a channel in %s, skipping" % channel.server.name)
+                logger.info("Already joined a channel in %s, skipping" % channel.server.name)
                 continue
 
             if channel and channel.type == discord.ChannelType.voice:
-                self.safe_print("Attempting to autojoin %s in %s" % (channel.name, channel.server.name))
+                logger.info("Attempting to autojoin %s in %s" % (channel.name, channel.server.name))
 
                 chperms = channel.permissions_for(channel.server.me)
 
                 if not chperms.connect:
-                    self.safe_print("Cannot join channel \"%s\", no permission." % channel.name)
+                    logger.info("Cannot join channel \"%s\", no permission." % channel.name)
                     continue
 
                 elif not chperms.speak:
-                    self.safe_print("Will not join channel \"%s\", no permission to speak." % channel.name)
+                    logger.info("Will not join channel \"%s\", no permission to speak." % channel.name)
                     continue
 
                 try:
@@ -140,13 +119,13 @@ class Abbot(discord.Client):
                 except Exception as e:
                     if self.config.debug_mode:
                         traceback.print_exc()
-                    print("Failed to join", channel.name)
+                    logger.error("Failed to join", channel.name)
 
             elif channel:
-                print("Not joining %s on %s, that's a text channel." % (channel.name, channel.server.name))
+                logger.info("Not joining %s on %s, that's a text channel." % (channel.name, channel.server.name))
 
             else:
-                print("Invalid channel thing: " + channel)
+                logger.error("Invalid channel thing: " + channel)
 
     async def _wait_delete_msg(self, message, after):
         await asyncio.sleep(after)
@@ -184,11 +163,11 @@ class Abbot(discord.Client):
 
         except discord.Forbidden:
             if not quiet:
-                self.safe_print("Warning: Cannot send message to %s, no permission" % dest.name)
+                logger.warning("Cannot send message to %s, no permission" % dest.name)
 
         except discord.NotFound:
             if not quiet:
-                self.safe_print("Warning: Cannot send message to %s, invalid channel?" % dest.name)
+                logger.warning("Cannot send message to %s, invalid channel?" % dest.name)
 
         return msg
 
@@ -205,11 +184,11 @@ class Abbot(discord.Client):
 
         except discord.Forbidden:
             if not quiet:
-                self.safe_print("Warning: Cannot send message to %s, no permission" % dest.name)
+                logger.warning("Cannot send message to %s, no permission" % dest.name)
 
         except discord.NotFound:
             if not quiet:
-                self.safe_print("Warning: Cannot send message to %s, invalid channel?" % dest.name)
+                logger.warning("Cannot send message to %s, invalid channel?" % dest.name)
 
         return msg
 
@@ -219,11 +198,11 @@ class Abbot(discord.Client):
 
         except discord.Forbidden:
             if not quiet:
-                self.safe_print("Warning: Cannot delete message \"%s\", no permission" % message.clean_content)
+                logger.warning("Cannot delete message \"%s\", no permission" % message.clean_content)
 
         except discord.NotFound:
             if not quiet:
-                self.safe_print("Warning: Cannot delete message \"%s\", message not found" % message.clean_content)
+                logger.warning("Cannot delete message \"%s\", message not found" % message.clean_content)
 
     # noinspection PyMethodOverriding
     def run(self):
@@ -241,7 +220,7 @@ class Abbot(discord.Client):
             try:
                 self._cleanup()
             except Exception as e:
-                print("Error in cleanup:", e)
+                logger.error("Error in cleanup:", e)
 
             self.loop.close()
             if self.exit_signal:
@@ -255,8 +234,8 @@ class Abbot(discord.Client):
         ex_type, ex, stack = sys.exc_info()
 
         if ex_type == exceptions.HelpfulError:
-            print("Exception in", event)
-            print(ex.message)
+            logger.error("Exception in", event)
+            logger.error(ex.message)
 
             await asyncio.sleep(2)  # don't ask
             await self.logout()
@@ -269,12 +248,12 @@ class Abbot(discord.Client):
             traceback.print_exc()
 
     async def on_resumed(self):
-        self.safe_print("Resumed...")
+        logger.debug("Resumed...")
 #        for vc in self.the_voice_clients.values():
 #            vc.main_ws = self.ws
 
     async def on_ready(self):
-        print('\rConnected!  Abbot v%s\n' % BOTVERSION)
+        logger.info('Connected!  Abbot v%s\n' % BOTVERSION)
 
         if self.config.owner_id == self.user.id:
             raise exceptions.HelpfulError(
@@ -286,30 +265,29 @@ class Abbot(discord.Client):
 
         self.init_ok = True
 
-        self.safe_print("Bot:   %s/%s#%s" % (self.user.id, self.user.name, self.user.discriminator))
+        logger.info("Bot:   %s/%s#%s" % (self.user.id, self.user.name, self.user.discriminator))
 
         owner = self._get_owner(voice=True) or self._get_owner()
         if owner and self.servers:
-            self.safe_print("Owner: %s/%s#%s\n" % (owner.id, owner.name, owner.discriminator))
+            logger.info("Owner: %s/%s#%s\n" % (owner.id, owner.name, owner.discriminator))
 
-            print('Server List:')
-            [self.safe_print(' - ' + s.name) for s in self.servers]
+            logger.info('Server List:')
+            [logger.info(' - ' + s.name) for s in self.servers]
 
         elif self.servers:
-            print("Owner could not be found on any server (id: %s)\n" % self.config.owner_id)
+            logger.info("Owner could not be found on any server (id: %s)\n" % self.config.owner_id)
 
-            print('Server List:')
-            [self.safe_print(' - ' + s.name) for s in self.servers]
+            logger.info('Server List:')
+            [logger.info(' - ' + s.name) for s in self.servers]
 
         else:
-            print("Owner unknown, bot is not on any servers.")
+            logger.info("Owner unknown, bot is not on any servers.")
             if self.user.bot:
-                print("\nTo make the bot join a server, paste this link in your browser.")
-                print("Note: You should be logged into your main account and have \n"
+                logger.info("\nTo make the bot join a server, paste this link in your browser.")
+                logger.info("Note: You should be logged into your main account and have \n"
                       "manage server permissions on the server you want the bot to join.\n")
-                print("    " + await self.generate_invite_link())
+                logger.info("    " + await self.generate_invite_link())
 
-        print()
 
         if self.config.bound_channels:
             chlist = set(self.get_channel(i) for i in self.config.bound_channels if i)
@@ -320,31 +298,28 @@ class Abbot(discord.Client):
             chlist.difference_update(invalids)
             self.config.bound_channels.difference_update(invalids)
 
-            print("Bound to text channels:")
-            [self.safe_print(' - %s/%s' % (ch.server.name.strip(), ch.name.strip())) for ch in chlist if ch]
+            logger.info("Bound to text channels:")
+            [logger.info(' - %s/%s' % (ch.server.name.strip(), ch.name.strip())) for ch in chlist if ch]
 
             if invalids and self.config.debug_mode:
-                print("\nNot binding to voice channels:")
-                [self.safe_print(' - %s/%s' % (ch.server.name.strip(), ch.name.strip())) for ch in invalids if ch]
+                logger.info("\nNot binding to voice channels:")
+                [logger.info(' - %s/%s' % (ch.server.name.strip(), ch.name.strip())) for ch in invalids if ch]
 
-            print()
 
         else:
-            print("Not bound to any text channels")
+            logger.info("Not bound to any text channels")
 
-        print()
-        print("Options:")
+        logger.info("Options:")
 
-        self.safe_print("  Command prefix: " + self.config.command_prefix)
-        print("  Default volume: %s%%" % int(self.config.default_volume * 100))
-        print("  Skip threshold: %s votes or %s%%" % (
+        logger.info("  Command prefix: " + self.config.command_prefix)
+        logger.info("  Default volume: %s%%" % int(self.config.default_volume * 100))
+        logger.info("  Skip threshold: %s votes or %s%%" % (
             self.config.skips_required, self._fixg(self.config.skip_ratio_required * 100)))
-        print("  Now Playing @mentions: " + ['Disabled', 'Enabled'][self.config.now_playing_mentions])
-        print("  Delete Messages: " + ['Disabled', 'Enabled'][self.config.delete_messages])
+        logger.info("  Now Playing @mentions: " + ['Disabled', 'Enabled'][self.config.now_playing_mentions])
+        logger.info("  Delete Messages: " + ['Disabled', 'Enabled'][self.config.delete_messages])
         if self.config.delete_messages:
-            print("    Delete Invoking: " + ['Disabled', 'Enabled'][self.config.delete_invoking])
-        print("  Debug Mode: " + ['Disabled', 'Enabled'][self.config.debug_mode])
-        print()
+            logger.info("    Delete Invoking: " + ['Disabled', 'Enabled'][self.config.delete_invoking])
+        logger.info("  Debug Mode: " + ['Disabled', 'Enabled'][self.config.debug_mode])
 
         # maybe option to leave the ownerid blank and generate a random command for the owner to use
         # wait_for_message is pretty neato
@@ -352,7 +327,6 @@ class Abbot(discord.Client):
         if self.config.autojoin_channels:
             await self._autojoin_channels(autojoin_channels)
 
-        print()
         
         await self.update_presence("Awating orders|{0}help".format(self.config.command_prefix))
         # t-t-th-th-that's all folks!
@@ -732,7 +706,7 @@ class Abbot(discord.Client):
 # Events
 # -----------
     async def on_member_update(self, before, after):
-        self.safe_print(" Before (After): {0.display_name} ({2.display_name}) Status: {0.status} ({2.status}) Game: {1} ({3}).".format(
+        logger.debug(" Before (After): {0.display_name} ({2.display_name}) Status: {0.status} ({2.status}) Game: {1} ({3}).".format(
             before, 
             before.game.name if before.game != None else "N/A",
             after, 
@@ -748,7 +722,7 @@ class Abbot(discord.Client):
             return
 
         if message.author == self.user:
-            self.safe_print("Ignoring command from myself (%s)" % message.content)
+            logger.info("Ignoring command from myself (%s)" % message.content)
             return
 
         if self.config.bound_channels and message.channel.id not in self.config.bound_channels and not message.channel.is_private:
@@ -767,11 +741,11 @@ class Abbot(discord.Client):
                 return
 
         if message.author.id in self.blacklist and message.author.id != self.config.owner_id:
-            self.safe_print("[User blacklisted] {0.id}/{0.name} ({1})".format(message.author, message_content))
+            logger.info("[User blacklisted] {0.id}/{0.name} ({1})".format(message.author, message_content))
             return
 
         else:
-            self.safe_print("[Command] {0.id}/{0.name} ({1})".format(message.author, message_content))
+            logger.info("[Command] {0.id}/{0.name} ({1})".format(message.author, message_content))
 
         user_permissions = self.permissions.for_user(message.author)
 
@@ -870,7 +844,7 @@ class Abbot(discord.Client):
                 )
 
         except (exceptions.CommandError, exceptions.HelpfulError, exceptions.ExtractionError) as e:
-            print("{0.__class__}: {0.message}".format(e))
+            logger.info("{0.__class__}: {0.message}".format(e))
 
             expirein = e.expire_in if self.config.delete_messages else None
             alsodelete = message if self.config.delete_invoking else None
@@ -891,5 +865,23 @@ class Abbot(discord.Client):
                 await self.safe_send_message(message.channel, '```\n%s\n```' % traceback.format_exc())
 
 if __name__ == '__main__':
+
+    # Setup logging
+    logger = logging.getLogger('abbot')
+    logger.setLevel(logging.DEBUG)
+    # create file handler which logs even debug messages
+    fh = logging.FileHandler('abbot.log')
+    fh.setLevel(logging.DEBUG)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s:%(message)s')
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
+    # add the handlers to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
+
     bot = Abbot()
     bot.run()
