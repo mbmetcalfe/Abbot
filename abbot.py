@@ -464,7 +464,6 @@ class Abbot(discord.Client):
             em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
             return Response(em, reply=False, embed=True, delete_after=0)
 
-
     async def cmd_roll(self, channel, author, message, permissions, dice):
         """
         Rolls a dice in NdN format.
@@ -499,6 +498,46 @@ class Abbot(discord.Client):
         em = discord.Embed(title='Dice Roll', description=author.mention + ' has rolled ' + wordRolls + ' ' + str(limit) + '-sided dice.\n\nThe result is: ' + result, colour=0x2e456b)
         em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
         return Response(em, reply=False, embed=True)
+
+    async def cmd_rpsls(self, channel, author, message, permissions, item):
+        """
+        Play Rock, Paper, Scissors, Lizard, Spock with Abbot.
+        Usage:
+            {command_prefix}rpsls <item>
+        """
+        GAME_OPTIONS = ['rock', 'spock', 'paper', 'lizard', 'scissors']
+        # Verb used for the win conditions.
+        VERBS = [[None, None, None, 'crushes', 'crushes'],    # Rock
+                 ['vaporizes', None, None, None, 'smashes'],  # Spock
+                 ['covers', 'disapproves', None, None, None], # Paper
+                 [None, 'poisons', 'eats', None, None],       # Lizard
+                 [None, None, 'cuts', 'decapitates', None]]   # Scissors
+
+        # convert name to playerNumber using name_to_number
+        try:
+            playerNumber = GAME_OPTIONS.index(item.strip().lower())
+        except ValueError:
+            return Response(":exclamation: '{0}' is not a valid choice.".format(item), reply=True, delete_after=30)
+
+        # compute random guess for computerNumber using random.randrange()
+        computerNumber = random.randrange(0, 5)
+
+        # compute difference of playerNumber and computerNumber modulo five
+        winner = (computerNumber - playerNumber) % 5
+
+        # determine winner
+        player_win = False if winner < 3 else True
+        
+        # print results
+        self.safe_print("Player chooses {0}.  I choose {1}.".format(guess.title(), GAME_OPTIONS[computerNumber].title()))
+        if player_win:
+             winVerb = VERBS[playerNumber][computerNumber]
+             self.safe_print("{0} {2} {1}.  Player wins!\n".format(guess.title(), GAME_OPTIONS[computerNumber].title(), winVerb))
+        elif computerNumber == playerNumber:
+             self.safe_print("We tie!\n")
+        else:
+             winVerb = VERBS[computerNumber][playerNumber]
+             self.safe_print("{0} {2} {1}.  I win!\n".format(GAME_OPTIONS[computerNumber].title(), guess.title(), winVerb))
 
 # -----------
 # Owner-only commands
