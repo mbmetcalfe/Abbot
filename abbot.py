@@ -505,7 +505,8 @@ class Abbot(discord.Client):
         Usage:
             {command_prefix}rpsls <item>
         """
-        GAME_OPTIONS = ['rock', 'spock', 'paper', 'lizard', 'scissors']
+        #GAME_OPTIONS = ['rock', 'spock', 'paper', 'lizard', 'scissors']
+        GAME_OPTIONS = ['rock', ':vulcan:', ':page_facing_up:', ':lizard:', ':scissors:']
         # Verb used for the win conditions.
         VERBS = [[None, None, None, 'crushes', 'crushes'],    # Rock
                  ['vaporizes', None, None, None, 'smashes'],  # Spock
@@ -529,15 +530,29 @@ class Abbot(discord.Client):
         player_win = False if winner < 3 else True
         
         # print results
-        self.safe_print("Player chooses {0}.  I choose {1}.".format(item.title(), GAME_OPTIONS[computerNumber].title()))
+        rpslsMessage = "{3} chooses {0}.  I choose {1}.".format(
+            guess.title(), 
+            GAME_OPTIONS[computerNumber].title(),
+            author.mention)
         if player_win:
              winVerb = VERBS[playerNumber][computerNumber]
-             self.safe_print("{0} {2} {1}.  Player wins!\n".format(item.title(), GAME_OPTIONS[computerNumber].title(), winVerb))
+             rpslsMessage += "\n{0} {2} {1}.  {3} wins!".format(
+                GAME_OPTIONS[playerNumber].title(), 
+                GAME_OPTIONS[computerNumber].title(), 
+                winVerb,
+                author.mention)
         elif computerNumber == playerNumber:
-             self.safe_print("We tie!\n")
+             rpslsMessage += "\nWe tie!")
         else:
              winVerb = VERBS[computerNumber][playerNumber]
-             self.safe_print("{0} {2} {1}.  I win!\n".format(GAME_OPTIONS[computerNumber].title(), item.title(), winVerb))
+             rpslsMessage += "{0} {2} {1}.  I win!".format(
+                GAME_OPTIONS[computerNumber].title(), 
+                GAME_OPTIONS[playerNumber].title(), 
+                winVerb)
+        
+        em = discord.Embed(title='Rock, Paper, Scissors, Lizard, Spock', description=rpslsMessage)
+        em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
+        return Response(em, reply=False, embed=True, delete_after=90)
 
 # -----------
 # Owner-only commands
