@@ -1,4 +1,4 @@
 # Abbot
 A simple bot for Discord using Discord.py
 
-Loosely based on MusicBot.
+A playground for having some fun on the servers I am on.
