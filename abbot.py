@@ -505,8 +505,8 @@ class Abbot(discord.Client):
         Usage:
             {command_prefix}rpsls <item>
         """
-        #GAME_OPTIONS = ['rock', 'spock', 'paper', 'lizard', 'scissors']
-        GAME_OPTIONS = ['rock', ':vulcan:', ':page_facing_up:', ':lizard:', ':scissors:']
+        GAME_OPTIONS = ['rock', 'spock', 'paper', 'lizard', 'scissors']
+        #GAME_OPTIONS = ['rock', ':vulcan:', ':page_facing_up:', ':lizard:', ':scissors:']
         # Verb used for the win conditions.
         VERBS = [[None, None, None, 'crushes', 'crushes'],    # Rock
                  ['vaporizes', None, None, None, 'smashes'],  # Spock
