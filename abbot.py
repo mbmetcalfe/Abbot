@@ -393,19 +393,19 @@ class Abbot(discord.Client):
                 return Response("No such command.", delete_after=10 if channel != 'Direct Message' else 0)
 
         else:
-            helpmsg = ""
+            helpmsg = "```"
             commands = []
             commandCount = 0
 
             for att in dir(self):
                 if att.startswith('cmd_') and att != 'cmd_help':
                     command_name = att.replace('cmd_', self.config.command_prefix).lower()
-                    if (commandCount % 4) == 0:
+                    if (commandCount % 3) == 0:
                         helpmsg += "\n"
                     commandCount += 1
-                    helpmsg += "{0:30}".format(command_name)
+                    helpmsg += "{0:20}".format(command_name)
 
-            helpmsg += "\n\nhttps://github.com/mbmetcalfe/Abbot/wiki/Commands"
+            helpmsg += "```\n\nhttps://github.com/mbmetcalfe/Abbot/wiki/Commands"
 
             em = discord.Embed(title='Commands', description=helpmsg, colour=0x2e456b)
             em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
@@ -453,6 +453,10 @@ class Abbot(discord.Client):
         """
         
         userChoices = " ".join(leftover_args).split(",")
+        
+        if len(userChoices) <= 2:
+            return Response(":exclamation: Must give two or more choices for this command to work correctly.", reply=True, delete_after=30)
+
         i = 1
         choices = ""
         for choice in userChoices:
@@ -504,6 +508,12 @@ class Abbot(discord.Client):
             # On exception (invalid format), default to one roll of a 6-sided dice
             rolls = 1
             limit = 6
+
+        if random.randint(1, 5) == 5:
+            await self.safe_send_message(dest=channel, content='https://giphy.com/gifs/please-upvotes-ken-xR2SI8vqfQMLe',
+                expire_in=20,
+                also_delete=None
+                )
 
         result = ', '.join(str(random.randint(1, limit)) for r in range(rolls))
         p = inflect.engine()
@@ -702,7 +712,7 @@ class Abbot(discord.Client):
             return Response(em, embed=True, reply=False, delete_after=0)
         elif leftover_args[0] == "size":
             if len(leftover_args) < 2:
-                return Response("You must supply an size.")
+                return Response("You must supply a size.")
 
             em = discord.Embed(title='Event: Size', description='Your size logged as: {0}.'.format(" ".join(leftover_args[1:])), colour=0x7FFF00)
             return Response(em, embed=True, reply=False, delete_after=0)
@@ -721,6 +731,13 @@ class Abbot(discord.Client):
 # -----------
 # Events
 # -----------
+    async def on_member_update(self, before, after):
+        self.safe_print(" Before (After): {0.display_name} ({2.display_name}) Status: {0.status} ({2.status}) Game: {1} ({3}).".format(
+            before, 
+            before.game.name if before.game != None else "N/A",
+            after, 
+            after.game.name if after.game != None else "N/A"))
+    
     async def on_message(self, message):
         # TODO: Change the scope of this variable.
         pmCommandList = ['joinserver', 'event', 'idea', 'help']
