@@ -542,7 +542,7 @@ class Abbot(discord.Client):
                 winVerb,
                 author.mention)
         elif computerNumber == playerNumber:
-             rpslsMessage += "\nWe tie!")
+             rpslsMessage += "\nWe tie!"
         else:
              winVerb = VERBS[computerNumber][playerNumber]
              rpslsMessage += "{0} {2} {1}.  I win!".format(
