@@ -531,12 +531,12 @@ class Abbot(discord.Client):
         
         # print results
         rpslsMessage = "{2} chooses {0}.\nI choose {1}.".format(
-            EMOJI_GAME_OPTIONS[playerNumber].title(), 
-            EMOJI_GAME_OPTIONS[computerNumber].title(),
+            EMOJI_GAME_OPTIONS[playerNumber], 
+            EMOJI_GAME_OPTIONS[computerNumber],
             author.mention)
         if player_win:
              winVerb = VERBS[playerNumber][computerNumber]
-             rpslsMessage += "\n{0} {2} {1}.  {3} wins!".format(
+             rpslsMessage += "\n{0} {2} {1}.\n{3} wins!".format(
                 EMOJI_GAME_OPTIONS[playerNumber], 
                 EMOJI_GAME_OPTIONS[computerNumber], 
                 winVerb,
@@ -545,7 +545,7 @@ class Abbot(discord.Client):
              rpslsMessage += "\nWe tie!"
         else:
              winVerb = VERBS[computerNumber][playerNumber]
-             rpslsMessage += "\n{0} {2} {1}.  I win!".format(
+             rpslsMessage += "\n{0} {2} {1}.\nI win!".format(
                 EMOJI_GAME_OPTIONS[computerNumber], 
                 EMOJI_GAME_OPTIONS[playerNumber], 
                 winVerb)
