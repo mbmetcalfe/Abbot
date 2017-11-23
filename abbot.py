@@ -506,7 +506,7 @@ class Abbot(discord.Client):
             {command_prefix}rpsls <item>
         """
         GAME_OPTIONS = ['rock', 'spock', 'paper', 'lizard', 'scissors']
-        #GAME_OPTIONS = ['rock', ':vulcan:', ':page_facing_up:', ':lizard:', ':scissors:']
+        EMOJI_GAME_OPTIONS = ['rock', ':vulcan:', ':page_facing_up:', ':lizard:', ':scissors:']
         # Verb used for the win conditions.
         VERBS = [[None, None, None, 'crushes', 'crushes'],    # Rock
                  ['vaporizes', None, None, None, 'smashes'],  # Spock
@@ -530,15 +530,15 @@ class Abbot(discord.Client):
         player_win = False if winner < 3 else True
         
         # print results
-        rpslsMessage = "{3} chooses {0}.  I choose {1}.".format(
-            GAME_OPTIONS[playerNumber].title(), 
-            GAME_OPTIONS[computerNumber].title(),
+        rpslsMessage = "{2} chooses {0}.  I choose {1}.".format(
+            EMOJI_GAME_OPTIONS[playerNumber].title(), 
+            EMOJI_GAME_OPTIONS[computerNumber].title(),
             author.mention)
         if player_win:
              winVerb = VERBS[playerNumber][computerNumber]
              rpslsMessage += "\n{0} {2} {1}.  {3} wins!".format(
-                GAME_OPTIONS[playerNumber].title(), 
-                GAME_OPTIONS[computerNumber].title(), 
+                EMOJI_GAME_OPTIONS[playerNumber].title(), 
+                EMOJI_GAME_OPTIONS[computerNumber].title(), 
                 winVerb,
                 author.mention)
         elif computerNumber == playerNumber:
@@ -546,8 +546,8 @@ class Abbot(discord.Client):
         else:
              winVerb = VERBS[computerNumber][playerNumber]
              rpslsMessage += "{0} {2} {1}.  I win!".format(
-                GAME_OPTIONS[computerNumber].title(), 
-                GAME_OPTIONS[playerNumber].title(), 
+                EMOJI_GAME_OPTIONS[computerNumber].title(), 
+                EMOJI_GAME_OPTIONS[playerNumber].title(), 
                 winVerb)
         
         em = discord.Embed(title='Rock, Paper, Scissors, Lizard, Spock', description=rpslsMessage)
