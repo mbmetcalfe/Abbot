@@ -531,7 +531,7 @@ class Abbot(discord.Client):
         
         # print results
         rpslsMessage = "{3} chooses {0}.  I choose {1}.".format(
-            guess.title(), 
+            GAME_OPTIONS[playerNumber].title(), 
             GAME_OPTIONS[computerNumber].title(),
             author.mention)
         if player_win:
