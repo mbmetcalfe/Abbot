@@ -56,6 +56,26 @@ def old_main():
         if giftee.hasChildNodes() and len(giftee.childNodes) > 0:
             print("Giftee: {0}".format(giftee.childNodes[0].data))
 
+def getNodeText(rootNode, nodeName):
+    rootNode.getElementsByTagName(nodeName)
+    
+def eventStatus():
+    doc = xml.dom.minidom.parse("2017_Event.xml");
+    
+    participants = doc.getElementsByTagName("participant")
+    print("SECRET GIFTER EVENT EXTRAVAGANZA 2017\n%d Participants:" % participants.length)
+    for participant in participants:
+        print("Name: {0}; Discord Id: {1}; \n\tSize: {2};\n\tAddress: {3}".format(
+            participant.getAttribute("name"),
+            participant.getAttribute("discord_id"),
+            participant.getElementsByTagName("size")[0].childNodes[0].data,
+            participant.getElementsByTagName("address")[0].childNodes[0].data))
+        giftee = participant.getElementsByTagName('giftee')
+        if len(giftee) == 0: # no giftee tag yet, so add one
+            print("\tGiftee: N/A.")
+        else:
+            print("\n\tGiftee: {0}.".format(giftee))
+    
 def main():
 # use the parse() function to load and parse an XML file
    doc = xml.dom.minidom.parse("2017_Event.xml");
@@ -68,23 +88,25 @@ def main():
    participants = doc.getElementsByTagName("participant")
    print("%d Participants:" % participants.length)
    for participant in participants:
-     print("Name: {0}; Discord Id: {1}.".format(participant.getAttribute("name"), participant.getAttribute("discord_id")))
+     print("Name: {0}; Discord Id: {1}; \n\tSize: {2};\n\tAddress: {3}".format(
+        participant.getAttribute("name"),
+        participant.getAttribute("discord_id"),
+        participant.getElementsByTagName("size")[0].childNodes[0].data,
+        participant.getElementsByTagName("address")[0].childNodes[0].data))
      giftee = participant.getElementsByTagName('giftee')
      if len(giftee) == 0: # no giftee tag yet, so add one
-##         newGiftee = doc.createElement("giftee")
-##         newGiftee.setAttribute("name", "BigData")
-        newGiftee = doc.createTextNode("giftee")
-        participant.appendChild(newGiftee)
+         newGiftee = doc.createElement("giftee")
+         newGifteeName = doc.createTextNode("Test")
+         newGiftee.appendChild(newGifteeName)
+         participant.appendChild(newGiftee)
      else:
          print("\tGiftee: {0}.".format(giftee))
    print(" ")
-##   expertise = doc.getElementsByTagName("expertise")
-##   print "%d expertise:" % expertise.length
-##   for skill in expertise:
-##     print skill.getAttribute("name")
+
    fileHandle = open("test.xml","w")
    doc.writexml(fileHandle)
    fileHandle.close()
     
 if __name__ == '__main__':
-    main()
+    #main()
+    eventStatus()
