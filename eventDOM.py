@@ -82,7 +82,7 @@ def main():
 ##   print "%d expertise:" % expertise.length
 ##   for skill in expertise:
 ##     print skill.getAttribute("name")
-   fileHandle = open("test.xml","wb")
+   fileHandle = open("test.xml","w")
    doc.writexml(fileHandle)
    fileHandle.close()
     
