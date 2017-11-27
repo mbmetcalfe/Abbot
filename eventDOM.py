@@ -1,14 +1,13 @@
-#!/usr/bin/python
+#!/usr/local/bin/python3.6
 
 from xml.dom.minidom import parse
 import xml.dom.minidom
 from xml.dom.minidom import getDOMImplementation
 
-# Code extrapolated from: https://www.tutorialspoint.com/python/python_xml_processing.htm
-# and https://stackoverflow.com/questions/13588072/python-minidom-xml-how-to-set-node-text-with-minidom-api?rq=1
+from pathlib import Path
+from event import EventParticipant, Event, JSONtoObject, json2obj
 
 # look here: https://wiki.python.org/moin/MiniDom
-
 # DOM documentation: https://docs.python.org/3/library/xml.dom.html
 
 def replaceText(node, newText):
@@ -17,7 +16,7 @@ def replaceText(node, newText):
 
     node.firstChild.replaceWholeText(newText)
 
-def old_main():
+def old_xml():
     # Open XML document using minidom parser
     DOMTree = xml.dom.minidom.parse("2017_Event.xml")
     event = DOMTree.documentElement
@@ -59,7 +58,7 @@ def old_main():
 def getNodeText(rootNode, nodeName):
     rootNode.getElementsByTagName(nodeName)
     
-def eventStatus():
+def xml_event_status():
     doc = xml.dom.minidom.parse("2017_Event.xml");
     
     participants = doc.getElementsByTagName("participant")
@@ -103,10 +102,83 @@ def main():
          print("\tGiftee: {0}.".format(giftee))
    print(" ")
 
-   fileHandle = open("test.xml","w")
+   fileHandle = open("./test.xml","w")
    doc.writexml(fileHandle)
    fileHandle.close()
     
+def json_event_status():
+    event2017 = Event('SECRET GIFTER EVENT EXTRAVAGANZA 2017')
+    
+    myself = EventParticipant('Michael', 12345)
+    event2017.participants[12345] = myself
+    
+    event2017.participants[12345].name = 'Changed'
+    
+#    myselfJSON = json.dumps(myself, default=jsonDefault)
+#    print(myselfJSON)
+    
+    eventJSON = json.dumps(event2017, default=jsonDefault)
+    print(eventJSON)
+
+def json_event_test():
+    eventName = '2017'
+    eventfile = Path("config/event_{0}.json".format(eventName))
+    event2017 = Event(eventName, 4)
+    
+    try:
+        participant = EventParticipant('12345')
+        participant.size = 'Medium'
+        participant.address = 'this is my address'
+        event2017.addParticipant(participant)
+        
+        participant = EventParticipant('789456')
+        participant.size = 'Large'
+        participant.address = 'this is their address'
+        event2017.addParticipant(participant)
+        
+        participant = EventParticipant('354654')
+        participant.size = 'XXL'
+        participant.address = 'Another address'
+        event2017.addParticipant(participant)
+    except ValueError as err:
+        print("An error occurred: {0}.".format(err))
+    
+    event2017.status()
+    event2017.save()
+    event2017 = None
+    
+    newEvent = JSONtoObject('config/event_2017.json')
+    print(newEvent)
+    
+'''
+    eJSON = event2017.toJSON()
+    print(eJSON)
+    event2017 = None
+    
+    newEvent = json2obj(eJSON)
+    newerEvent = Event(eventName, 0)
+    newerEvent.loadObj(newEvent)
+
+    try:
+        participant = EventParticipant('id98764')
+        participant.size = 'Medium'
+        participant.address = 'new address, goes here'
+        newerEvent.addParticipant(participant)
+        
+        participant = EventParticipant('id65468768434')
+        participant.size = 'XS'
+        participant.address = 'this is, a fake, address'
+        newerEvent.addParticipant(participant)
+    except ValueError as err:
+        print("An error occurred: {0}.".format(err))
+        
+    print("\n\nNew Obj:\n{0}".format(newerEvent.toJSON()))
+    newerEvent.save()
+'''
+    
 if __name__ == '__main__':
     #main()
-    eventStatus()
+    #xml_event_status()
+    #json_event_status()
+    json_event_test()
+    print("OK.")

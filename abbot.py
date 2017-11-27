@@ -24,6 +24,8 @@ from textwrap import dedent
 from constants import VERSION as BOTVERSION
 from constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 
+import event
+
 class Response:
     def __init__(self, content, reply=False, embed=False, delete_after=0):
         self.content = content
