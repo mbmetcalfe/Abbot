@@ -372,8 +372,8 @@ class Abbot(discord.Client):
                     commandCount += 1
                     helpmsg += "{0:20}".format(command_name)
 
-            helpmsg += "```\nFor help on a specific command, type {0}help <command>"
-            helpmsg += "\n\nor visit: https://github.com/mbmetcalfe/Abbot/wiki/Commands".format(self.config.command_prefix)
+            helpmsg += "```\nFor help on a specific command, type {0}help <command>".format(self.config.command_prefix)
+            helpmsg += "\n\nor visit: https://github.com/mbmetcalfe/Abbot/wiki/Commands"
 
             em = discord.Embed(title='Commands', description=helpmsg, colour=0x2e456b)
             em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
