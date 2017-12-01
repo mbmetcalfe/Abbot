@@ -766,12 +766,15 @@ class Abbot(discord.Client):
         channel = server.get_channel
         logger.debug("Server {0}; Channel {1}; Member {2.name}".format(server, channel, member))
         fmt = "Oh hey, it's {0.mention}!  Welcome to the **{1.name}** Discord server.  Please behave yourself."
-        #await self.safe_send_message(dest=channel, content=fmt.format(member, server))
 
         role = discord.utils.get(server.roles, name='Minions')
-        logger.debug("Role {0.name}; Created {0.created_at}".format(role))
-        await self.add_roles(member, role)
-        
+        try:
+            logger.debug("Role {0.name}; Created {0.created_at}".format(role))
+            await self.add_roles(member, role)
+            
+            await self.safe_send_message(channel, fmt.format(member, server))
+        except discord.Forbidden
+            await client.send_message(message.channel, "Lol I can't add roles bro.")
         # check that they are joining 'this' server
         #if member.guild.id != 379363572876181515:
         #    return
