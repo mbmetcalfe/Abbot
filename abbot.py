@@ -774,7 +774,7 @@ class Abbot(discord.Client):
             
             await self.safe_send_message(channel, fmt.format(member, server))
         except discord.Forbidden:
-            await client.send_message(message.channel, "Lol I can't add roles bro.")
+            await self.safe_send_message(channel, "Lol I can't add roles bro.")
         # check that they are joining 'this' server
         #if member.guild.id != 379363572876181515:
         #    return
