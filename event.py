@@ -56,7 +56,11 @@ class Event(object):
     def from_json(cls, json_str):
         json_dict = json.loads(json_str)
         return cls(**json_dict)
-        
+
+    def fromJSON(self, fileName):
+        with open(fileName) as json_data:
+            self.__dict__ = json.load(json_data)
+
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
     
@@ -99,10 +103,9 @@ def JSONtoObject(fileName):
     
     with open(fileName) as json_data:
         d = json.load(json_data)
-        print("json_data = {0}\n".format(d))
         
-        #return d
-        return json.loads(d, object_hook=_json_object_hook)
+        return d
+        #return json.loads(d, object_hook=_json_object_hook)
 
 def _json_object_hook(d): return namedtuple('X', d.keys())(*d.values())
 def json2obj(data): return json.loads(data, object_hook=_json_object_hook)

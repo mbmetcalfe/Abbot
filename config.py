@@ -78,6 +78,7 @@ class Config:
         self.delete_messages  = config.getboolean('Abbot', 'DeleteMessages', fallback=ConfigDefaults.delete_messages)
         self.delete_invoking = config.getboolean('Abbot', 'DeleteInvoking', fallback=ConfigDefaults.delete_invoking)
         self.debug_mode = config.getboolean('Abbot', 'DebugMode', fallback=ConfigDefaults.debug_mode)
+        self.auto_statuses =  config.get('Abbot', 'AutoStatuses', fallback=ConfigDefaults.auto_statuses)
 
         self.blacklist_file = config.get('Files', 'BlacklistFile', fallback=ConfigDefaults.blacklist_file)
         self.auto_playlist_file = config.get('Files', 'AutoPlaylistFile', fallback=ConfigDefaults.auto_playlist_file)
@@ -153,11 +154,20 @@ class Config:
                 print("[Warning] AutojoinChannels data invalid, will not autojoin any channels")
                 self.autojoin_channels = set()
 
+        if self.auto_statuses:
+            try:
+                self.auto_statuses = set(x for x in self.auto_statuses.split(",") if x)
+            except:
+                print("[Warning] AutoStatuses data invalid, will not bind to any status.")
+                self.auto_statuses = set()
+
         self.delete_invoking = self.delete_invoking and self.delete_messages
 
         self.bound_channels = set(item.replace(',', ' ').strip() for item in self.bound_channels)
 
         self.autojoin_channels = set(item.replace(',', ' ').strip() for item in self.autojoin_channels)
+        
+        self.auto_statuses = set(item.replace(',', ' ').strip() for item in self.auto_statuses)        
 
     # TODO: Add save function for future editing of options with commands
     #       Maybe add warnings about fields missing from the config file
@@ -175,6 +185,7 @@ class ConfigDefaults:
     command_prefix = '!'
     bound_channels = set()
     autojoin_channels = set()
+    auto_statuses = set()
 
     default_volume = 0.15
     skips_required = 4

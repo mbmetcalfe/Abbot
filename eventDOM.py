@@ -145,10 +145,12 @@ def json_event_test():
     
     event2017.status()
     event2017.save()
-    event2017 = None
+    #event2017 = None
     
-    newEvent = JSONtoObject('config/event_2017.json')
-    print(newEvent)
+    event2017.fromJSON('./config/event_2017.json')
+    #event2017.status()
+    print(event2017)
+
     
 '''
     eJSON = event2017.toJSON()

@@ -329,8 +329,10 @@ class Abbot(discord.Client):
         if self.config.autojoin_channels:
             await self._autojoin_channels(autojoin_channels)
 
-        
-        await self.update_presence("Awating orders|{0}help".format(self.config.command_prefix))
+        if self.config.auto_statuses:
+            await self.update_presence("{0} | {1}help".format(
+                random.sample(self.config.auto_statuses, 1)[0],
+                self.config.command_prefix))
         # t-t-th-th-that's all folks!
 
 # -----------
