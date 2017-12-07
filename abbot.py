@@ -47,6 +47,8 @@ class Abbot(discord.Client):
         super().__init__()
         self.aiosession = aiohttp.ClientSession(loop=self.loop)
         self.http.user_agent += ' Abbot/%s' % BOTVERSION
+        
+        self.loop.create_task(self._auto_presence_task())
 
     # TODO: Add some sort of `denied` argument for a message to send when someone else tries to use it
     def owner_only(func):
@@ -950,6 +952,22 @@ class Abbot(discord.Client):
             traceback.print_exc()
             if self.config.debug_mode:
                 await self.safe_send_message(message.channel, '```\n%s\n```' % traceback.format_exc())
+
+
+    async def _auto_presence_task(self):
+        await self.wait_until_ready()
+
+        channel = discord.Object(id='279610788442800138') #mysandbox on Hall of Heroes.
+        while not self.is_closed:
+            if self.config.auto_statuses:
+                newStatus = random.sample(self.config.auto_statuses, 1)[0]
+                await self.update_presence("{0} | {1}help".format(
+                    newStatus,
+                    self.config.command_prefix))
+
+            #await self.safe_send_message(channel, "Changing status to '{0}'".format(newStatus))
+            # TODO: Add config for how long to wait until changing status.
+            await asyncio.sleep(60 * 60) # task runs every hour
 
 if __name__ == '__main__':
 
