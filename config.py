@@ -78,6 +78,7 @@ class Config:
         self.delete_messages  = config.getboolean('Abbot', 'DeleteMessages', fallback=ConfigDefaults.delete_messages)
         self.delete_invoking = config.getboolean('Abbot', 'DeleteInvoking', fallback=ConfigDefaults.delete_invoking)
         self.debug_mode = config.getboolean('Abbot', 'DebugMode', fallback=ConfigDefaults.debug_mode)
+        self.auto_status =  config.get('Abbot', 'AutoStatus', fallback=ConfigDefaults.auto_status)
         self.auto_statuses =  config.get('Abbot', 'AutoStatuses', fallback=ConfigDefaults.auto_statuses)
 
         self.blacklist_file = config.get('Files', 'BlacklistFile', fallback=ConfigDefaults.blacklist_file)
@@ -185,6 +186,7 @@ class ConfigDefaults:
     command_prefix = '!'
     bound_channels = set()
     autojoin_channels = set()
+    auto_status = 0
     auto_statuses = set()
 
     default_volume = 0.15
