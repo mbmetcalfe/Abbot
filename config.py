@@ -66,6 +66,10 @@ class Config:
         self.command_prefix = config.get('Chat', 'CommandPrefix', fallback=ConfigDefaults.command_prefix)
         self.bound_channels = config.get('Chat', 'BindToChannels', fallback=ConfigDefaults.bound_channels)
         self.autojoin_channels =  config.get('Chat', 'AutojoinChannels', fallback=ConfigDefaults.autojoin_channels)
+        
+        self.reddit_client_id = config.get('reddit', 'client_id', fallback=ConfigDefaults.reddit_client_id)
+        self.reddit_client_secret = config.get('reddit', 'client_secret', fallback=ConfigDefaults.reddit_client_secret)
+        self.reddit_joke_subreddit_list =  config.get('reddit', 'JokeSubbreditList', fallback=ConfigDefaults.reddit_joke_subreddit_list)
 
         self.default_volume = config.getfloat('Abbot', 'DefaultVolume', fallback=ConfigDefaults.default_volume)
         self.skips_required = config.getint('Abbot', 'SkipsRequired', fallback=ConfigDefaults.skips_required)
@@ -162,6 +166,13 @@ class Config:
                 print("[Warning] AutoStatuses data invalid, will not bind to any status.")
                 self.auto_statuses = set()
 
+        if self.reddit_joke_subreddit_list:
+            try:
+                self.reddit_joke_subreddit_list = set(x.strip() for x in self.reddit_joke_subreddit_list.split(",") if x)
+            except:
+                print("[Warning] JokeSubbreditList data invalid, will not bind to any status.")
+                self.reddit_joke_subreddit_list = set()
+
         self.delete_invoking = self.delete_invoking and self.delete_messages
 
         self.bound_channels = set(item.replace(',', ' ').strip() for item in self.bound_channels)
@@ -189,6 +200,10 @@ class ConfigDefaults:
     auto_status = 0
     auto_statuses = set()
 
+    reddit_client_id = None
+    reddit_client_secret = None
+    reddit_joke_subreddit_list = set()
+    
     default_volume = 0.15
     skips_required = 4
     skip_ratio_required = 0.5

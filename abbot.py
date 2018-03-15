@@ -23,6 +23,7 @@ from functools import wraps
 from textwrap import dedent
 from constants import VERSION as BOTVERSION
 from constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
+import praw
 
 import event
 
@@ -318,10 +319,6 @@ class Abbot(discord.Client):
         logger.info("Options:")
 
         logger.info("  Command prefix: " + self.config.command_prefix)
-        logger.info("  Default volume: %s%%" % int(self.config.default_volume * 100))
-        logger.info("  Skip threshold: %s votes or %s%%" % (
-            self.config.skips_required, self._fixg(self.config.skip_ratio_required * 100)))
-        logger.info("  Now Playing @mentions: " + ['Disabled', 'Enabled'][self.config.now_playing_mentions])
         logger.info("  Delete Messages: " + ['Disabled', 'Enabled'][self.config.delete_messages])
         if self.config.delete_messages:
             logger.info("    Delete Invoking: " + ['Disabled', 'Enabled'][self.config.delete_invoking])
@@ -400,6 +397,42 @@ class Abbot(discord.Client):
         em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
         return Response(em, reply=False, embed=True, delete_after=90)
 
+    async def cmd_joke(self, channel, author, message, permissions):
+        """
+        Tell a joke.
+        Usage:
+            {command_prefix}joke
+        """
+        maxPosts = 100
+        
+        #TODO: Have him get a random one once/day.
+        #TODO: Add the URL and author in the message.
+        #TODO: Add in /r/DadJokes, /r/CleanJokes, /r/OneLiners
+        #TODO: decide on hot vs top vs new
+
+        #client id: kWEd0O5g2AInEw
+        #secret: PFJvbw-hOUmkxAmLQmZpbApW9FY
+        #user agent: Abbot
+        reddit = praw.Reddit(user_agent='Abbot',
+            client_id=self.config.reddit_client_id,
+            client_secret=self.config.reddit_client_secret)
+
+        subreddit = 'Jokes' # default in case the next part fails to pick a valid subreddit
+        # First select a subreddit
+        if self.config.reddit_joke_subreddit_list:
+            subreddit = random.sample(self.config.reddit_joke_subreddit_list, 1)[0]
+
+        posts = reddit.subreddit(subreddit).new(limit=maxPosts)
+        postNumber = random.randint(0, maxPosts)
+        for i, post in enumerate(posts):
+            if i == postNumber:
+                
+                em = discord.Embed(title=subreddit, description='{0}\n{1}'.format(post.title, post.selftext), colour=0xf4d742)
+                em.set_author(name=post.author, url=post.url, icon_url='https://www.redditstatic.com/icon.png')
+                em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
+                return Response(em, reply=False, embed=True)
+
+        
     async def cmd_whoami(self, channel, author, message, permissions):
         """
         Show some stats about thyself.
