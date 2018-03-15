@@ -407,12 +407,8 @@ class Abbot(discord.Client):
         
         #TODO: Have him get a random one once/day.
         #TODO: Add the URL and author in the message.
-        #TODO: Add in /r/DadJokes, /r/CleanJokes, /r/OneLiners
         #TODO: decide on hot vs top vs new
 
-        #client id: kWEd0O5g2AInEw
-        #secret: PFJvbw-hOUmkxAmLQmZpbApW9FY
-        #user agent: Abbot
         reddit = praw.Reddit(user_agent='Abbot',
             client_id=self.config.reddit_client_id,
             client_secret=self.config.reddit_client_secret)
