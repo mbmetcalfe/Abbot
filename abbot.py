@@ -71,6 +71,24 @@ class Abbot(discord.Client):
         sys.stdout.buffer.write((content + end).encode('utf-8', 'replace'))
         if flush: sys.stdout.flush()
 
+    def get_reddit_post(self, subreddit):
+        #TODO: Have him get a random one once/day.
+        #TODO: Add the URL and author in the message.
+        #TODO: decide on hot vs top vs new
+        maxPosts = 100
+        
+        reddit = praw.Reddit(user_agent='Abbot',
+            client_id=self.config.reddit_client_id,
+            client_secret=self.config.reddit_client_secret)
+
+        posts = reddit.subreddit(subreddit).new(limit=maxPosts)
+        postNumber = random.randint(0, maxPosts)
+        for i, post in enumerate(posts):
+            if i == postNumber:
+                return post
+
+        return None
+
     async def send_typing(self, destination):
         try:
             return await super().send_typing(destination)
@@ -403,32 +421,24 @@ class Abbot(discord.Client):
         Usage:
             {command_prefix}joke
         """
-        maxPosts = 100
         
         #TODO: Have him get a random one once/day.
         #TODO: Add the URL and author in the message.
         #TODO: decide on hot vs top vs new
 
-        reddit = praw.Reddit(user_agent='Abbot',
-            client_id=self.config.reddit_client_id,
-            client_secret=self.config.reddit_client_secret)
-
         subreddit = 'Jokes' # default in case the next part fails to pick a valid subreddit
         # First select a subreddit
         if self.config.reddit_joke_subreddit_list:
             subreddit = random.sample(self.config.reddit_joke_subreddit_list, 1)[0]
+            
+        joke = self.get_reddit_post(subreddit)
 
-        posts = reddit.subreddit(subreddit).new(limit=maxPosts)
-        postNumber = random.randint(0, maxPosts)
-        for i, post in enumerate(posts):
-            if i == postNumber:
-                
-                em = discord.Embed(title=subreddit, description='{0}\n{1}'.format(post.title, post.selftext), colour=0xf4d742)
-                em.set_author(name=post.author, url=post.url, icon_url='https://www.redditstatic.com/icon.png')
-                em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
-                return Response(em, reply=False, embed=True)
+        if joke:
+            em = discord.Embed(title=subreddit, description='{0}\n{1}'.format(joke.title, joke.selftext), colour=0xf4d742)
+            em.set_author(name=joke.author, url=joke.url, icon_url='https://www.redditstatic.com/icon.png')
+            em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
+            return Response(em, reply=False, embed=True)
 
-        
     async def cmd_whoami(self, channel, author, message, permissions):
         """
         Show some stats about thyself.
