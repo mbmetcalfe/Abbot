@@ -738,6 +738,34 @@ class Abbot(discord.Client):
             await self.safe_send_message(s, args)
         
         return Response(":ok_hand: '{0} sent to all servers.".format(args), delete_after=20)
+
+    async def log_usage(self, message_type, message):
+        """
+        Log some usage statics for the user based on message type.
+        """
+        #TODO: Add a command to get a user's stats (self or other).
+        #TODO: Add a command to show leaderboard: longest single message, most messages, most typed characters, most commands used,
+        #   most common command, least used command.
+        #TODO: Add a command for generic stats, similar to the leaderboard.
+        #TODO: Consider a task to clean up data at the start of the month and/or push data to a "totals" table.
+        #TODO: Log stats by server (message.server) and channel (message.channel).
+        #TODO: Log mentions (channel, user, role), reactions.
+        #   on_reaction_add/on_reaction_remove
+        #TODO: Consider reacting to on_message_edit and updating the stats accordingly (for non-commands only).
+        if message_type == "command":
+            logger.debug("{0.name}#{0.discriminator} ({0.id}): Command use: {1}".format(message.author, message.content))
+            #TODO: Add/Increase the command count use for the user.
+        elif message_type == "invalid":
+            logger.debug("{0.name}#{0.discriminator} ({0.id}): Invalid command: {1}".format(message.author, message.content))
+            #TODO: Add command to table of invalid commands.  Useful for later determining if commands needs to be renamed/added/etc.
+        elif message_type == "message":
+            logger.debug("{0.name}#{0.discriminator} ({0.id}): Non-command use: {1}".format(message.author, message.content))
+            #TODO: Add/Increase message count.
+            #TODO: Update # of characters/words typed.
+            #TODO: Update min/max message length, if applicable.
+            
+        else:
+            logger.error("{0.name}#{0.discriminator} ({0.id}): Unhandled message type '{1}': {2}".format(message.author, message_type, message.content))
         
 # -----------
 # Secret-Gifter Event Commands
@@ -849,6 +877,8 @@ class Abbot(discord.Client):
 
         message_content = message.content.strip()
         if not message_content.startswith(self.config.command_prefix):
+            if message.author != self.user:
+                await self.log_usage("message", message)
             return
 
         if message.author == self.user:
@@ -863,7 +893,10 @@ class Abbot(discord.Client):
 
         handler = getattr(self, 'cmd_%s' % command, None)
         if not handler:
+            await self.log_usage("invalid_command", message)
             return
+        else:
+            await self.log_usage("command", message)
 
         if message.channel.is_private:
             if not (message.author.id == self.config.owner_id and (command in pmCommandList)):
@@ -1014,11 +1047,11 @@ if __name__ == '__main__':
     logger = logging.getLogger('abbot')
     logger.setLevel(logging.DEBUG)
     # create file handler which logs even debug messages
-    fh = logging.FileHandler('abbot.log')
-    fh.setLevel(logging.DEBUG)
+    fh = logging.FileHandler(filename='abbot.log', mode='w')
+    fh.setLevel(logging.ERROR)
     # create console handler with a higher log level
     ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
+    ch.setLevel(logging.DEBUG)
     # create formatter and add it to the handlers
     formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s:%(message)s')
     ch.setFormatter(formatter)
