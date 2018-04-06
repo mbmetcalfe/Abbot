@@ -752,6 +752,8 @@ class Abbot(discord.Client):
         #TODO: Log mentions (channel, user, role), reactions.
         #   on_reaction_add/on_reaction_remove
         #TODO: Consider reacting to on_message_edit and updating the stats accordingly (for non-commands only).
+        #TODO: Filter out/count link-only messages.
+        #   regex: ^((https?|ftps?|telnet|ssh|mailto):\/\/)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&\/= ]*)$
         if message_type == "command":
             logger.debug("{0.name}#{0.discriminator} ({0.id}): Command use: {1}".format(message.author, message.content))
             #TODO: Add/Increase the command count use for the user.
