@@ -196,6 +196,21 @@ class Abbot(discord.Client):
 
         return msg
 
+    async def safe_add_reaction(self, message, emoji):
+        reaction = None
+        try:
+            reaction = await self.add_reaction(message, emoji)
+
+        except discord.Forbidden:
+            if not quiet:
+                logger.warning("Cannot react to message in %s, no permission" % message.channel)
+
+        except discord.NotFound:
+            if not quiet:
+                logger.warning("Cannot react to message in %s, invalid channel?" % message.channel)
+
+        return reaction
+
     async def safe_send_embed(self, dest, content, *, tts=False, expire_in=0, also_delete=None, quiet=False):
         msg = None
         try:
@@ -739,6 +754,26 @@ class Abbot(discord.Client):
         
         return Response(":ok_hand: '{0} sent to all servers.".format(args), delete_after=20)
 
+    async def try_add_reaction(self, message):
+        """Check the message content.  If certain criteria are met, react with appropriate reaction."""
+        emoji = None
+        # to add a reation, use add(reaction(message, emoji))
+        # http://discordpy.readthedocs.io/en/latest/api.html#discord.Client.add_reaction
+        # will need to create a discord.emoji object.
+        #TODO: Add trigger text/reaction/complete match in configuration (consider possibility for regex in trigger)
+        if "cool" in message.content.lower():
+            logger.debug("Add :cool: reaction to Message Id: {0.id}, Author: {0.author}".format(message))
+            emoji = ":cool:"
+        elif "ok" == message.content.lower(): # complete match only
+            logger.debug("Add :thumbsup: reaction to Message Id: {0.id}, Author: {0.author}".format(message))
+            emoji = ":thumbsup:"
+        elif any(x in message.content.lower() for x in ["shit", "crap", "poop"]):
+            logger.debug("Add :poop: reaction to Message Id: {0.id}, Author: {0.author}".format(message))
+            emoji = ":poop:"
+
+        safe_add_reaction(self, message, emoji)
+        
+
     async def log_usage(self, message_type, message):
         """
         Log some usage statics for the user based on message type.
@@ -879,6 +914,7 @@ class Abbot(discord.Client):
         if not message_content.startswith(self.config.command_prefix):
             if message.author != self.user:
                 await self.log_usage("message", message)
+                await self.try_add_reaction(message)
             return
 
         if message.author == self.user:
