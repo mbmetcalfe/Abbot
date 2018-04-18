@@ -4,6 +4,8 @@ import random
 import string
 import logging
 
+import discord
+
 DATABASE_NAME = 'abbot.sqlite3'
 
 def cleanDB(tableName = None):
@@ -34,8 +36,9 @@ def cleanDB(tableName = None):
     finally:
         conn.close()
 
-def insertUpdateUsageCommand(user, server, channel, commandName, valid):
+def insertUpdateUsageCommands(user, server, channel, commandName, valid):
     """ This function is used to insert or update the usage of a command into the database for a user."""
+    #TODO: Might be able to just pass in message, since the Message class has all server, channel, author properties.
     conn = sqlite3.connect(DATABASE_NAME)
     cur = conn.cursor()
     commandCount = 1
@@ -70,8 +73,9 @@ def insertUpdateUsageCommand(user, server, channel, commandName, valid):
     finally:
         conn.close()
 
-def insertUpdateUsageMessage(user, server, channel, message):
+def insertUpdateUsageMessages(user, server, channel, message):
     """ This function is used to insert or update the usage of a message into the database for a user."""
+    #TODO: Might be able to just pass in message, since the Message class has all server, channel, author properties.
     conn = sqlite3.connect(DATABASE_NAME)
     cur = conn.cursor()
     values = ()
@@ -81,7 +85,7 @@ def insertUpdateUsageMessage(user, server, channel, message):
     maxLength = characterCount
     ts = datetime.datetime.now()
 
-    logger.debug("insertUpdateUsageMessage(user={0}, server={1}, channel={2}, message={3})".format(user, server, channel, "***"))
+    logger.debug("insertUpdateUsageMessages(user={0}, server={1}, channel={2}, message={3})".format(user, server, channel, "***"))
 
     # First check if the user has sent any messages on the server/channel
     values = (user, server, channel)
@@ -110,6 +114,42 @@ def insertUpdateUsageMessage(user, server, channel, message):
 
     except BaseException as ex:
         logger.error("There was a problem inserting or updating the database record: {0}".format(ex))
+    finally:
+        conn.close()
+
+def insertUpdateUsageMentions(message):
+    """ This function is used to insert or update the usage of a mention into the database for a user.
+        We keep track of count of users, channels, and roles a user mentions, as well as how many time
+        the user has been mentioned (by another user)."""
+    conn = sqlite3.connect(DATABASE_NAME)
+    cur = conn.cursor()
+    values = ()
+    sql = ""
+
+    logger.debug("insertUpdateUsageMentions(Message Id={0})".format(message.id))
+    # First check if the user has mentioned anyone server/channel
+    values = (message.author.id, message.server, message.channel)
+
+    try:
+        cur.execute("select count from usage_mentions where user = ? and "
+            "server = ? and "
+            "channel = ? and "
+            "command_name = ?", values)
+        row = cur.fetchone()
+        if row == None:
+            sql = "insert into usage_mentions (user, server, channel) VALUES (?, ?, ?, ?, ?, ?)"
+            values = (message.author.id, message.server, message.channel)
+        else:
+            sql = "update usage_mentions set valid = ?, count = ? where user = ? and server = ? and channel = ?"
+            values = (message.author.id, message.server, message.channel)
+
+        #cur.execute(sql, values)
+
+        # Save (commit) the changes
+        #conn.commit()
+
+    except BaseException as ex:
+        logger.error("There was a problem inserting or updating the mention information: {0}".format(ex))
     finally:
         conn.close()
 
@@ -247,6 +287,60 @@ def summarizeMessageUsage(server, channel, user):
             rowStr += ("{0}\t\t\t|".format(row[col]))
         logger.debug(rowStr)
 
+def insertRecords(server, channels, users, commands):
+    insertUpdateUsageCommands(users[random.randint(0, len(users)-1)], server, channels[random.randint(0, len(channels)-1)], commands[random.randint(0, len(commands)-1)], 1)
+    insertUpdateUsageCommands(users[random.randint(0, len(users)-1)], server, channels[random.randint(0, len(channels)-1)], commands[random.randint(0, len(commands)-1)], 1)
+    message = ''.join(random.choices(string.ascii_uppercase + string.digits + string.ascii_lowercase + string.whitespace + string.punctuation, k=random.randint(4, 1024)))
+    insertUpdateUsageMessages(users[random.randint(0, len(users)-1)], server, channels[random.randint(0, len(channels)-1)], message)
+    message = ''.join(random.choices(string.ascii_uppercase + string.digits + string.ascii_lowercase + string.whitespace + string.punctuation, k=random.randint(4, 1024)))
+    insertUpdateUsageMessages(users[random.randint(0, len(users)-1)], server, channels[random.randint(0, len(channels)-1)], message)
+
+def commandUsage(server, users):
+    logger.debug("================================================================")
+    logger.debug(" COMMAND USAGE")
+    logger.debug("================================================================")
+    logger.debug("----------------------------------------------------------------")
+    logger.debug("All Servers, All Channels, All Users, No Breakdown")
+    logger.debug("----------------------------------------------------------------")
+    summarizeCommandUsage(None, None, None, False)
+    logger.debug("----------------------------------------------------------------")
+    logger.debug("One Server, All Channels, All Users, No Breakdown")
+    logger.debug("----------------------------------------------------------------")
+    summarizeCommandUsage(server, None, None, False)
+    logger.debug("----------------------------------------------------------------")
+    logger.debug("One Server, All Channels, All Users, With Breakdown")
+    logger.debug("----------------------------------------------------------------")
+    summarizeCommandUsage(server, None, None, True)
+    logger.debug("----------------------------------------------------------------")
+    logger.debug("One Server, All Channels, One User, No Breakdown")
+    logger.debug("----------------------------------------------------------------")
+    summarizeCommandUsage(server, None, users[random.randint(0, len(users)-1)], False)
+    logger.debug("----------------------------------------------------------------")
+    logger.debug("One Server, All Channels, One User, With Breakdown")
+    logger.debug("----------------------------------------------------------------")
+    summarizeCommandUsage(server, None, users[random.randint(0, len(users)-1)], True)
+
+def messageUsage(server, channels, users):
+    logger.debug("================================================================")
+    logger.debug(" MESSAGE USAGE")
+    logger.debug("================================================================")
+    logger.debug("----------------------------------------------------------------")
+    logger.debug("All Servers, All Channels, All Users")
+    logger.debug("----------------------------------------------------------------")
+    summarizeMessageUsage(None, None, None)
+    logger.debug("----------------------------------------------------------------")
+    logger.debug("One Servers, All Channels, All Users")
+    logger.debug("----------------------------------------------------------------")
+    summarizeMessageUsage(server, None, None)
+    logger.debug("----------------------------------------------------------------")
+    logger.debug("One Servers, All Channels, One Users")
+    logger.debug("----------------------------------------------------------------")
+    summarizeMessageUsage(server, None, users[random.randint(0, len(users)-1)])
+    logger.debug("----------------------------------------------------------------")
+    logger.debug("One Servers, One Channels, One Users")
+    logger.debug("----------------------------------------------------------------")
+    summarizeMessageUsage(server, channels[random.randint(0, len(channels)-1)], users[random.randint(0, len(users)-1)])
+
 if __name__ == '__main__':
     # Setup logging
     logger = logging.getLogger('abbot')
@@ -268,50 +362,9 @@ if __name__ == '__main__':
     commands = ['help', 'joke', 'roll', 'pick', 'choose', 'rpsls', 'ping', 'whoami']
     serverName = 'servername'
 
-    insertUpdateUsageCommand(users[random.randint(0, len(users)-1)], serverName, channels[random.randint(0, len(channels)-1)], commands[random.randint(0, len(commands)-1)], 1)
-    insertUpdateUsageCommand(users[random.randint(0, len(users)-1)], serverName, channels[random.randint(0, len(channels)-1)], commands[random.randint(0, len(commands)-1)], 1)
-    message = ''.join(random.choices(string.ascii_uppercase + string.digits + string.ascii_lowercase + string.whitespace + string.punctuation, k=random.randint(4, 1024)))
-    insertUpdateUsageMessage(users[random.randint(0, len(users)-1)], serverName, channels[random.randint(0, len(channels)-1)], message)
-    message = ''.join(random.choices(string.ascii_uppercase + string.digits + string.ascii_lowercase + string.whitespace + string.punctuation, k=random.randint(4, 1024)))
-    insertUpdateUsageMessage(users[random.randint(0, len(users)-1)], serverName, channels[random.randint(0, len(channels)-1)], message)
-
-    logger.debug("================================================================")
-    logger.debug("Command Usage: All Servers, All Channels, All Users, No Breakdown")
-    logger.debug("================================================================")
-    summarizeCommandUsage(None, None, None, False)
-    logger.debug("================================================================")
-    logger.debug("Command Usage: One Server, All Channels, All Users, No Breakdown")
-    logger.debug("================================================================")
-    summarizeCommandUsage(serverName, None, None, False)
-    logger.debug("================================================================")
-    logger.debug("Command Usage: One Server, All Channels, All Users, With Breakdown")
-    logger.debug("================================================================")
-    summarizeCommandUsage(serverName, None, None, True)
-    logger.debug("================================================================")
-    logger.debug("Command Usage: One Server, All Channels, One User, No Breakdown")
-    logger.debug("================================================================")
-    summarizeCommandUsage(serverName, None, users[random.randint(0, len(users)-1)], False)
-    logger.debug("================================================================")
-    logger.debug("Command Usage: One Server, All Channels, One User, With Breakdown")
-    logger.debug("================================================================")
-    summarizeCommandUsage(serverName, None, users[random.randint(0, len(users)-1)], True)
-
-    logger.debug("================================================================")
-    logger.debug("Message Usage: All Servers, All Channels, All Users")
-    logger.debug("================================================================")
-    summarizeMessageUsage(None, None, None)
-    logger.debug("================================================================")
-    logger.debug("Message Usage: One Servers, All Channels, All Users")
-    logger.debug("================================================================")
-    summarizeMessageUsage(serverName, None, None)
-    logger.debug("================================================================")
-    logger.debug("Message Usage: One Servers, All Channels, One Users")
-    logger.debug("================================================================")
-    summarizeMessageUsage(serverName, None, users[random.randint(0, len(users)-1)])
-    logger.debug("================================================================")
-    logger.debug("Message Usage: One Servers, One Channels, One Users")
-    logger.debug("================================================================")
-    summarizeMessageUsage(serverName, channels[random.randint(0, len(channels)-1)], users[random.randint(0, len(users)-1)])
+    insertRecords(serverName, channels, users, commands)
+    commandUsage(serverName, users)
+    messageUsage(serverName, channels, users)
     
     #cleanDB('usage_commands')
     #cleanDB()
