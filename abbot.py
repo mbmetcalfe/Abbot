@@ -196,6 +196,25 @@ class Abbot(discord.Client):
 
         return msg
 
+    async def safe_add_reaction(self, message, emoji):
+        """Try to react to a message with a specific emoji."""
+        reaction = None
+        try:
+            reaction = await self.add_reaction(message, emoji)
+
+        except discord.Forbidden:
+            if not quiet:
+                logger.warning("Cannot react to message in %s, no permission" % message.channel)
+
+        except discord.NotFound:
+            if not quiet:
+                logger.warning("Cannot react to message in %s, invalid channel?" % message.channel)
+        
+        except:
+            logger.error("Could not react to message id {0} with {1}".format(message.id, emoji))
+
+        return reaction
+
     async def safe_send_embed(self, dest, content, *, tts=False, expire_in=0, also_delete=None, quiet=False):
         msg = None
         try:
@@ -739,6 +758,31 @@ class Abbot(discord.Client):
         
         return Response(":ok_hand: '{0} sent to all servers.".format(args), delete_after=20)
 
+    async def try_add_reaction(self, message):
+        """Check the message content.  If certain criteria are met, react with appropriate reaction."""
+        emoji = None
+
+        #TODO: Add trigger text/reaction/complete match in configuration (consider possibility for regex in trigger)
+        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["cool", "kool", "kewl", "awesome"]):
+            emoji = random.choice(['😎', '🆒'])
+            await self.safe_add_reaction(message, emoji)
+        if "ok" == message.content.lower(): # complete match only
+            emoji = random.choice(['👍', '👌', '🆗'])
+            await self.safe_add_reaction(message, emoji)
+        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["shit", "crap", "poop", "turd"]):
+            emoji = '💩'
+            await self.safe_add_reaction(message, emoji)
+        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["haha", "lol"]):
+            emoji = random.choice(['😀', '😃', '😄', '😁', '😆', '😅', '😂', '😺', '😸'])
+            await self.safe_add_reaction(message, emoji)
+        if "rofl" == message.content.lower():
+            emoji = '🤣'
+            await self.safe_add_reaction(message, emoji)
+
+#        if emoji != None:
+#            await self.safe_add_reaction(message, emoji)
+        
+
     async def log_usage(self, message_type, message):
         """
         Log some usage statics for the user based on message type.
@@ -881,6 +925,7 @@ class Abbot(discord.Client):
         if not message_content.startswith(self.config.command_prefix):
             if message.author != self.user:
                 await self.log_usage("message", message)
+                await self.try_add_reaction(message)
             return
 
         if message.author == self.user:
