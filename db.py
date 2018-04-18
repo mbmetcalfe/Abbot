@@ -6,6 +6,34 @@ import logging
 
 DATABASE_NAME = 'abbot.sqlite3'
 
+def cleanDB(tableName = None):
+    """ This function is used to cleanup the database.  If table is supplied, clean just that table.
+        Otherwise, clean all tables. """
+    tables = ['usage_commands', 'usage_mentions', 'usage_messages', 'usage_reactions']
+
+    if tableName != None and not tableName in tables:
+        logger.error("Invalid table name: {0}".format(tableName))
+        return
+
+    tables = [tableName] if tableName != None else tables
+
+    logger.debug('Cleaning tables: {0}'.format(tables))
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        cur = conn.cursor()
+
+        for table in tables:
+            sql = 'delete from {0}'.format(table)
+            cur.execute(sql)
+
+        logger.debug("Cleaned up tables: {0}.")
+        conn.commit()
+
+    except BaseException as ex:
+        logger.error("There was a problem cleaning the table: {0}".format(ex))
+    finally:
+        conn.close()
+
 def insertUpdateUsageCommand(user, server, channel, commandName, valid):
     """ This function is used to insert or update the usage of a command into the database for a user."""
     conn = sqlite3.connect(DATABASE_NAME)
@@ -127,7 +155,8 @@ def summarizeCommandUsage(server, channel, user, breakdown):
         if breakdown:
             sql = """select command_name, sum(count) as command_calls 
                 from usage_commands where server = ? and channel = ? 
-                group by command_name order by 2 desc, command_name"""
+                group by command_name 
+                order by 2 desc, command_name"""
         else:
             sql = """select sum(count) as command_calls 
                 from usage_commands where server = ? and channel = ? 
@@ -149,13 +178,11 @@ def summarizeCommandUsage(server, channel, user, breakdown):
     elif channel != None and user == None:
         sql = 'select user, sum(count) as command_calls from usage_commands'
         values = []
-        
+
     conn = sqlite3.connect(DATABASE_NAME)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    # logger.debug("SQL = {0}".format(sql))
-    # logger.debug("values = {0}".format(values))
     cur.execute(sql, values)
     columns = [i[0] for i in cur.description]
     logger.debug('|{0}|'.format('\t\t\t|'.join(columns)))
@@ -211,8 +238,6 @@ def summarizeMessageUsage(server, channel, user):
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    # logger.debug("SQL = {0}".format(sql))
-    # logger.debug("values = {0}".format(values))
     cur.execute(sql, values)
     columns = [i[0] for i in cur.description]
     logger.debug('|{0}|'.format('\t\t\t|'.join(columns)))
@@ -222,22 +247,6 @@ def summarizeMessageUsage(server, channel, user):
             rowStr += ("{0}\t\t\t|".format(row[col]))
         logger.debug(rowStr)
 
-# Create table
-#c.execute('''CREATE TABLE stocks
-#             (date text, trans text, symbol text, qty real, price real)''')
-
-
-#t = ('RHAT',)
-#c.execute('SELECT * FROM stocks WHERE symbol=?', t)
-#print(c.fetchone())
-
-# Larger example that inserts many records at a time
-# purchases = [('2006-03-28', 'BUY', 'IBM', 1000, 45.00),
-#              ('2006-04-05', 'BUY', 'MSFT', 1000, 72.00),
-#              ('2006-04-06', 'SELL', 'IBM', 500, 53.00),
-#             ]
-#c.executemany('INSERT INTO stocks VALUES (?,?,?,?,?)', purchases)
-#conn.commit
 if __name__ == '__main__':
     # Setup logging
     logger = logging.getLogger('abbot')
@@ -304,6 +313,8 @@ if __name__ == '__main__':
     logger.debug("================================================================")
     summarizeMessageUsage(serverName, channels[random.randint(0, len(channels)-1)], users[random.randint(0, len(users)-1)])
     
+    #cleanDB('usage_commands')
+    #cleanDB()
     # TODO: Detect/count emojis.
     # https://stackoverflow.com/questions/43146528/how-to-extract-all-the-emojis-from-text
     # a_list = ['🤔 🙈 me así, bla es se 😌 ds 💕👭👙 👨‍👩‍👦‍👦']
