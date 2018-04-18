@@ -81,7 +81,8 @@ class Abbot(discord.Client):
             client_id=self.config.reddit_client_id,
             client_secret=self.config.reddit_client_secret)
 
-        posts = reddit.subreddit(subreddit).new(limit=maxPosts)
+        #posts = reddit.subreddit(subreddit).new(limit=maxPosts)
+        posts = reddit.subreddit(subreddit).hot(limit=maxPosts)
         postNumber = random.randint(0, maxPosts)
         for i, post in enumerate(posts):
             if i == postNumber:
