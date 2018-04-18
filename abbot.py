@@ -197,6 +197,7 @@ class Abbot(discord.Client):
         return msg
 
     async def safe_add_reaction(self, message, emoji):
+        """Try to react to a message with a specific emoji."""
         reaction = None
         try:
             reaction = await self.add_reaction(message, emoji)
@@ -208,6 +209,9 @@ class Abbot(discord.Client):
         except discord.NotFound:
             if not quiet:
                 logger.warning("Cannot react to message in %s, invalid channel?" % message.channel)
+        
+        except:
+            logger.error("Could not react to message id {0} with {1}".format(message.id, emoji))
 
         return reaction
 
@@ -757,21 +761,26 @@ class Abbot(discord.Client):
     async def try_add_reaction(self, message):
         """Check the message content.  If certain criteria are met, react with appropriate reaction."""
         emoji = None
-        # to add a reation, use add(reaction(message, emoji))
-        # http://discordpy.readthedocs.io/en/latest/api.html#discord.Client.add_reaction
-        # will need to create a discord.emoji object.
-        #TODO: Add trigger text/reaction/complete match in configuration (consider possibility for regex in trigger)
-        if "cool" in message.content.lower():
-            logger.debug("Add :cool: reaction to Message Id: {0.id}, Author: {0.author}".format(message))
-            emoji = ":cool:"
-        elif "ok" == message.content.lower(): # complete match only
-            logger.debug("Add :thumbsup: reaction to Message Id: {0.id}, Author: {0.author}".format(message))
-            emoji = ":thumbsup:"
-        elif any(x in message.content.lower() for x in ["shit", "crap", "poop"]):
-            logger.debug("Add :poop: reaction to Message Id: {0.id}, Author: {0.author}".format(message))
-            emoji = ":poop:"
 
-        safe_add_reaction(self, message, emoji)
+        #TODO: Add trigger text/reaction/complete match in configuration (consider possibility for regex in trigger)
+        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["cool", "kool", "kewl", "awesome"]):
+            emoji = random.choice(['😎', '🆒'])
+            await self.safe_add_reaction(message, emoji)
+        if "ok" == message.content.lower(): # complete match only
+            emoji = random.choice(['👍', '👌', '🆗'])
+            await self.safe_add_reaction(message, emoji)
+        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["shit", "crap", "poop", "turd"]):
+            emoji = '💩'
+            await self.safe_add_reaction(message, emoji)
+        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["haha", "lol"]):
+            emoji = random.choice(['😀', '😃', '😄', '😁', '😆', '😅', '😂', '😺', '😸'])
+            await self.safe_add_reaction(message, emoji)
+        if "rofl" == message.content.lower():
+            emoji = '🤣'
+            await self.safe_add_reaction(message, emoji)
+
+#        if emoji != None:
+#            await self.safe_add_reaction(message, emoji)
         
 
     async def log_usage(self, message_type, message):
