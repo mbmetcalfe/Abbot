@@ -2,9 +2,11 @@ import os
 import shutil
 import traceback
 import configparser
+import db
+import logging
+logger = logging.getLogger('abbot')
 
 from exceptions import HelpfulError
-
 
 class Config:
     def __init__(self, config_file):
@@ -12,7 +14,7 @@ class Config:
         config = configparser.ConfigParser()
 
         if not config.read(config_file, encoding='utf-8'):
-            print('[config] Config file not found, copying example_options.ini')
+            logger.info('Config file not found, copying example_options.ini')
 
             try:
                 shutil.copy('config/example_options.ini', config_file)
@@ -22,7 +24,7 @@ class Config:
                 c.read(config_file, encoding='utf-8')
 
                 if not int(c.get('Permissions', 'OwnerID', fallback=0)): # jake pls no flame
-                    print("\nPlease configure config/options.ini and restart the bot.", flush=True)
+                    logger.error("Please configure config/options.ini and restart the bot.")
                     os._exit(1)
 
             except FileNotFoundError as e:
@@ -33,13 +35,13 @@ class Config:
                 )
 
             except ValueError: # Config id value was changed but its not valid
-                print("\nInvalid value for OwnerID, config cannot be loaded.")
+                logger.error("Invalid value for OwnerID, config cannot be loaded.")
                 # TODO: HelpfulError
                 os._exit(4)
 
             except Exception as e:
                 print(e)
-                print("\nUnable to copy config/example_options.ini to %s" % config_file, flush=True)
+                logger.error("Unable to copy config/example_options.ini to %s" % config_file)
                 os._exit(2)
 
         config = configparser.ConfigParser(interpolation=None)
@@ -84,6 +86,7 @@ class Config:
         self.debug_mode = config.getboolean('Abbot', 'DebugMode', fallback=ConfigDefaults.debug_mode)
         self.auto_status =  config.get('Abbot', 'AutoStatus', fallback=ConfigDefaults.auto_status)
         self.auto_statuses =  config.get('Abbot', 'AutoStatuses', fallback=ConfigDefaults.auto_statuses)
+        self.database_name = config.get('Abbot', 'Database', fallback=ConfigDefaults.database_name)
 
         self.blacklist_file = config.get('Files', 'BlacklistFile', fallback=ConfigDefaults.blacklist_file)
         self.auto_playlist_file = config.get('Files', 'AutoPlaylistFile', fallback=ConfigDefaults.auto_playlist_file)
@@ -163,7 +166,7 @@ class Config:
             try:
                 self.auto_statuses = set(x for x in self.auto_statuses.split(",") if x)
             except:
-                print("[Warning] AutoStatuses data invalid, will not bind to any status.")
+                logger.warning("AutoStatuses data invalid, will not bind to any status.")
                 self.auto_statuses = set()
 
         if self.reddit_joke_subreddit_list:
@@ -172,6 +175,21 @@ class Config:
             except:
                 print("[Warning] JokeSubbreditList data invalid, will not bind to any status.")
                 self.reddit_joke_subreddit_list = set()
+
+        if self.database_name:
+            dbOk = db.checkDB(self.database_name)
+            if not dbOk:
+                raise HelpfulError(
+                    "Could not locate or create the database.",
+                    "Ensure database is configured correctly.",
+                    preface=confpreface)
+            else:
+                logger.debug("DB OK!")
+        else:
+            raise HelpfulError(
+                "No database name specified in the config.",
+                "Please fill in the database field.",
+                preface=confpreface)
 
         self.delete_invoking = self.delete_invoking and self.delete_messages
 
@@ -192,6 +210,7 @@ class ConfigDefaults:
     email = None    #
     password = None # This is not where you put your login info, go away.
     token = None    #
+    database_name = 'abbot.sqlite3'
 
     owner_id = None
     command_prefix = '!'
