@@ -141,10 +141,10 @@ class Abbot(discord.Client):
                         await self.on_player_finished_playing(player)
 
                     joined_servers.append(channel.server)
-                except Exception as e:
+                except Exception as ex:
                     if self.config.debug_mode:
                         traceback.print_exc()
-                    logger.error("Failed to join", channel.name)
+                    logger.error("Failed to join %s: %s" % channel.name, ex)
 
             elif channel:
                 logger.info("Not joining %s on %s, that's a text channel." % (channel.name, channel.server.name))
@@ -188,7 +188,7 @@ class Abbot(discord.Client):
 
         except discord.Forbidden:
             if not quiet:
-                logger.warning("Cannot send message to %s, no permission" % dest.name)
+                logger.warning("Cannot send message to %s, no permission." % dest.name)
 
         except discord.NotFound:
             if not quiet:
@@ -203,12 +203,10 @@ class Abbot(discord.Client):
             reaction = await self.add_reaction(message, emoji)
 
         except discord.Forbidden:
-            if not quiet:
-                logger.warning("Cannot react to message in %s, no permission" % message.channel)
+            logger.warning("Cannot react to message in %s, no permission" % message.channel)
 
         except discord.NotFound:
-            if not quiet:
-                logger.warning("Cannot react to message in %s, invalid channel?" % message.channel)
+            logger.warning("Cannot react to message in %s, invalid channel?" % message.channel)
         
         except:
             logger.error("Could not react to message id {0} with {1}".format(message.id, emoji))
@@ -264,7 +262,7 @@ class Abbot(discord.Client):
             try:
                 self._cleanup()
             except Exception as e:
-                logger.error("Error in cleanup:", e)
+                logger.error("Error in cleanup: %s" % e)
 
             self.loop.close()
             if self.exit_signal:
@@ -278,7 +276,7 @@ class Abbot(discord.Client):
         ex_type, ex, stack = sys.exc_info()
 
         if ex_type == exceptions.HelpfulError:
-            logger.error("Exception in", event)
+            logger.error("Exception in %s" % event)
             logger.error(ex.message)
 
             await asyncio.sleep(2)  # don't ask
@@ -297,7 +295,7 @@ class Abbot(discord.Client):
 #            vc.main_ws = self.ws
 
     async def on_ready(self):
-        logger.info('Connected!  Abbot v%s\n' % BOTVERSION)
+        logger.info('Connected!  Abbot v%s.' % BOTVERSION)
 
         if self.config.owner_id == self.user.id:
             raise exceptions.HelpfulError(
@@ -401,7 +399,6 @@ class Abbot(discord.Client):
 
         else:
             helpmsg = "```"
-            commands = []
             commandCount = 0
 
             for att in dir(self):
