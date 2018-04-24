@@ -22,7 +22,6 @@ class AbbotDatabase:
         the database file must reside in the same folder as the scripts.
         If the database does not exist, then an attempt is made to create it with the
         supplied DDL file.
-        If the database exists, this function returns True, otherwise, it returns False.
         """
         self.connection = None
         dbFile = Path(self.databaseName) # File should be in same directory as scripts.
@@ -120,13 +119,15 @@ class MessageUsage(BaseUsage):
         Get the message usage information for the specific user/server/channel.
         At least one of user, server, or channel must be supplied.
         """
-        sql = """select sum(word_count) as word_count, 
+        sql = """select user, 
+            sum(word_count) as word_count, 
             sum(character_count) as character_count, 
             sum(max_message_length) as max_message_length, 
             max(last_message_timestamp) as last_message_timestamp 
             from usage_messages """
         if server == None and user == None and channel == None:
             logger.error("Must supply at least user, server, or channel.")
+            return False
         else:
             # Build the where clause
             sql += "where "
@@ -147,7 +148,11 @@ class MessageUsage(BaseUsage):
                 values += (channel,)
 
         # Add in the group by
-        sql += "group by user"
+        sql += "group by user "
+
+        # TODO: Add ability to state which ranking user wants.
+        # Add in the order by
+        sql += "order by 3 desc, 4 desc" # 3 is the character count, 4 is the max message length
         if self.database != None:
             try:
                 # Check that we have all the necessary data first.
@@ -168,11 +173,14 @@ class MessageUsage(BaseUsage):
                         self.server, self.channel, self.user))
 
                 cur.close()
+                return True
 
             except Exception as ex:
                 logger.error("Problem getting message usage: {0}".format(ex))
+                return False
         else:
             logger.error("No valid DB connection available.")
+            return False
         
     def insert(self):
         """
@@ -205,6 +213,7 @@ class MessageUsage(BaseUsage):
         except BaseException as ex:
             logger.error("There was a problem inserting the usage_messages record: {0}".format(ex))
             return False
+
 
     def update(self):
         """

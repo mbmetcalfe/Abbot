@@ -613,6 +613,56 @@ class Abbot(discord.Client):
         em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
         return Response(em, reply=False, embed=True, delete_after=90)
 
+    async def cmd_usage(self, channel, author, message, permissions, user_mentions, leftover_args):
+        """
+        Gets usage information.  By default, shows your own usage for the current channel.
+        Usage:
+            {command_prefix}usage [user mention] [server]
+        Examples:
+            ?usage 
+            Gets your own usage information for the current channel.
+            ?usage server
+            Gets your own usage information for the current server.
+            ?usage @abbot
+            Gets the usage information for the user Abbot.
+            """
+        if len(user_mentions) == 1:
+            member = discord.utils.get(message.server.members, id=user_mentions[0].id)
+        else:
+            member = author
+
+        usage = None
+        rank = False
+        queryServer = False
+        target = message.channel.name
+        for arg in leftover_args:
+            if arg.lower() == "server":
+                queryServer = True
+                target = message.server.name
+            elif arg.lower() == "rank":
+                rank = True
+            else:
+                logger.debug("Unsupported usage argument '{0}'".format(arg))
+
+        if queryServer:
+            usage = MessageUsage(self.database, member.id, message.server.id, None)
+        else:
+            usage = MessageUsage(self.database, member.id, message.server.id, message.channel.id)
+
+        logger.debug("[Usage]: query user = {0}, args = {1}".format(member.mention, leftover_args))
+
+        em = discord.Embed(
+            title='{0} usage summary for {1.name}#{1.discriminator}'.format(target.upper(), member), 
+            description='{0} words\n{1} characters\nLongest Message: {2}\nLast Message: {3}.'.format(
+                usage.wordCount,
+                usage.characterCount,
+                usage.maxMessageLength,
+                usage.lastMessageTimestamp), 
+            colour=0x2e456b)
+        em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
+        em.set_thumbnail(url=member.avatar_url)
+        return Response(em, reply=False, embed=True)
+
 # -----------
 # Owner-only commands
 # cmd_clean can be taken out of own_only when sanity checked to not break.
@@ -799,6 +849,10 @@ class Abbot(discord.Client):
         #TODO: Consider reacting to on_message_edit and updating the stats accordingly (for non-commands only).
         #TODO: Filter out/count link-only messages.
         #   regex: ^((https?|ftps?|telnet|ssh|mailto):\/\/)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&\/= ]*)$
+
+        if message.author.bot: # We don't really care to track bot usage
+            return
+
         if message_type == "command":
             logger.debug("{0.name}#{0.discriminator} ({0.id}): Command use: {1}".format(message.author, message.content))
             #TODO: Add/Increase the command count use for the user.
@@ -818,8 +872,8 @@ class Abbot(discord.Client):
             else:
                 contentSize = len(content.split())
                 charCount = len(content)
-                messageUsage.wordCount = contentSize if contentSize > messageUsage.wordCount else messageUsage.wordCount
-                messageUsage.characterCount = charCount if charCount > messageUsage.characterCount else messageUsage.characterCount
+                messageUsage.wordCount += contentSize
+                messageUsage.characterCount += charCount
                 messageUsage.maxMessageLength = messageUsage.characterCount if messageUsage.characterCount > messageUsage.maxMessageLength else messageUsage.maxMessageLength
                 messageUsage.update()
             
