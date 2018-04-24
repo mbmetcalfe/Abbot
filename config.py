@@ -2,7 +2,8 @@ import os
 import shutil
 import traceback
 import configparser
-import db
+from db import AbbotDatabase
+
 import logging
 logger = logging.getLogger('abbot')
 
@@ -176,16 +177,7 @@ class Config:
                 print("[Warning] JokeSubbreditList data invalid, will not bind to any status.")
                 self.reddit_joke_subreddit_list = set()
 
-        if self.database_name:
-            dbOk = db.checkDB(self.database_name)
-            if not dbOk:
-                raise HelpfulError(
-                    "Could not locate or create the database.",
-                    "Ensure database is configured correctly.",
-                    preface=confpreface)
-            else:
-                logger.debug("DB OK!")
-        else:
+        if not self.database_name:
             raise HelpfulError(
                 "No database name specified in the config.",
                 "Please fill in the database field.",

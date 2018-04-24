@@ -24,6 +24,7 @@ from textwrap import dedent
 from constants import VERSION as BOTVERSION
 from constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 import praw
+from db import MessageUsage, AbbotDatabase
 
 import event
 
@@ -52,6 +53,9 @@ class Abbot(discord.Client):
         if self.config.auto_status > 0:
             logger.info("AutoStatus set.  Creating task.")
             self.loop.create_task(self._auto_presence_task())
+        
+        if self.config.database_name:
+            self.database = AbbotDatabase(self.config.database_name)
 
     # TODO: Add some sort of `denied` argument for a message to send when someone else tries to use it
     def owner_only(func):
@@ -802,10 +806,22 @@ class Abbot(discord.Client):
             logger.debug("{0.name}#{0.discriminator} ({0.id}): Invalid command: {1}".format(message.author, message.content))
             #TODO: Add command to table of invalid commands.  Useful for later determining if commands needs to be renamed/added/etc.
         elif message_type == "message":
+            content = message.content
             logger.debug("{0.name}#{0.discriminator} ({0.id}): Non-command use: {1}".format(message.author, message.content))
-            #TODO: Add/Increase message count.
-            #TODO: Update # of characters/words typed.
-            #TODO: Update min/max message length, if applicable.
+            messageUsage = MessageUsage(self.database, message.author.id, message.server.id, message.channel.id)
+            if messageUsage.lastMessageTimestamp == None:
+                messageUsage.wordCount = len(content.split())
+                messageUsage.characterCount = len(content)
+                messageUsage.maxMessageLength = messageUsage.characterCount
+                
+                messageUsage.insert()
+            else:
+                contentSize = len(content.split())
+                charCount = len(content)
+                messageUsage.wordCount = contentSize if contentSize > messageUsage.wordCount else messageUsage.wordCount
+                messageUsage.characterCount = charCount if charCount > messageUsage.characterCount else messageUsage.characterCount
+                messageUsage.maxMessageLength = messageUsage.characterCount if messageUsage.characterCount > messageUsage.maxMessageLength else messageUsage.maxMessageLength
+                messageUsage.update()
             
         else:
             logger.error("{0.name}#{0.discriminator} ({0.id}): Unhandled message type '{1}': {2}".format(message.author, message_type, message.content))
