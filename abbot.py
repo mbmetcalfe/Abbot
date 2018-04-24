@@ -814,6 +814,9 @@ class Abbot(discord.Client):
         """Check the message content.  If certain criteria are met, react with appropriate reaction."""
         emoji = None
 
+        if random.randint(1, 4) != 1: # 25% chance to react
+            return
+
         #TODO: Add trigger text/reaction/complete match in configuration (consider possibility for regex in trigger)
         if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["cool", "kool", "kewl", "awesome"]):
             emoji = random.choice(['😎', '🆒'])
