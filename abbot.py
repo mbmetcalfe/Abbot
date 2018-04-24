@@ -878,7 +878,7 @@ class Abbot(discord.Client):
                 charCount = len(content)
                 messageUsage.wordCount += contentSize
                 messageUsage.characterCount += charCount
-                messageUsage.maxMessageLength = messageUsage.characterCount if messageUsage.characterCount > messageUsage.maxMessageLength else messageUsage.maxMessageLength
+                messageUsage.maxMessageLength = charCount if charCount > messageUsage.maxMessageLength else messageUsage.maxMessageLength
                 messageUsage.update()
             
         else:
