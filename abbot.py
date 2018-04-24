@@ -635,7 +635,7 @@ class Abbot(discord.Client):
         usage = None
         rank = False
         queryServer = False
-        target = message.channel.name
+        target = "#" + message.channel.name
         for arg in leftover_args:
             if arg.lower() == "server":
                 queryServer = True
