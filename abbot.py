@@ -460,15 +460,35 @@ class Abbot(discord.Client):
             em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
             return Response(em, reply=False, embed=True)
 
-    async def cmd_whoami(self, channel, author, message, permissions):
+    async def cmd_whois(self, channel, author, message, user_mentions):
         """
-        Show some stats about thyself.
+        Show discord information about someone.
         Usage:
-            {command_prefix}whoami
+            {command_prefix}whois [user mention]
         """
-        role_names = [role.name for role in author.roles]    
-        whoamiMsg = "%s:\n\tRoles: %s\n\tTop Role: %s\n\tStatus: %s\n\tGame: %s\n\tJoined: %s" % (author.mention, role_names, author.top_role, author.status, author.game, author.joined_at)
-        return Response(whoamiMsg, reply=False, delete_after=60)
+        if len(user_mentions) == 0:
+            member = author
+        elif len(user_mentions) >= 1:
+            # if more than one mention is supplied, we only grab the first one.
+            member = discord.utils.get(message.server.members, id=user_mentions[0].id)
+        
+        # Build the message
+        iterRoles = iter(member.roles)
+        next(iterRoles) # First role is always @everyone, so ignore that one.
+        roleMessage = ', '.join([role.name for role in iterRoles])
+        gameMessage = "Playing {0}.".format(member.game) if member.game != None else ""
+        em = discord.Embed(
+            title='{0.display_name}{1} AKA {0.name}#{0.discriminator}'.format(member, (" :robot:" if member.bot else "")), 
+            colour=member.colour)
+        em.add_field(name='Status', value=str(member.status).title(), inline=True)
+        em.add_field(name='Created', value=member.created_at, inline=True)
+        em.add_field(name='Joined {0}'.format(message.server), value=member.joined_at, inline=True)
+        em.add_field(name='Roles', value=roleMessage, inline=False)
+        if member.game != None:
+            em.add_field(name='Playing', value=member.game, inline=True)
+        em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
+        em.set_thumbnail(url=member.avatar_url)
+        return Response(em, reply=False, embed=True)
 
     async def cmd_idea(self, channel, author, permissions, idea):
         """
