@@ -41,4 +41,13 @@ CREATE TABLE IF NOT EXISTS `usage_commands` (
 	`count`	INTEGER DEFAULT 1,
 	PRIMARY KEY(`user`,`command_name`,`server`,`channel`)
 );
+DROP TABLE IF EXISTS `ideas`;
+CREATE TABLE IF NOT EXISTS `ideas` (
+	`user`	TEXT NOT NULL,
+	`server`	TEXT NOT NULL,
+	`channel`	TEXT NOT NULL,
+	`idea`	TEXT NOT NULL,
+    `idea_date`	TEXT,
+	PRIMARY KEY(`user`,`server`,`channel`)
+);
 COMMIT;

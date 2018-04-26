@@ -88,6 +88,48 @@ class AbbotDatabase:
             return False
 
 
+class Idea:
+    def __init__(self, database, user, server, channel, idea):
+        """
+        Initialize the idea.
+        """
+        self.database = database
+        self.user = user
+        self.server = server
+        self.channel = channel
+        self.idea = idea
+        self.ideaDate = datetime.datetime.now()
+
+    def insert(self):
+        """
+        Insert an idea record.
+        """
+        insertSQL = "insert into ideas (user, server, channel, idea, idea_date) VALUES (?, ?, ?, ?, ?)"
+        values = ()
+
+        # Check that we have all the necessary data first.
+        if self.database.connection == None:
+            self.database.connect()
+
+        if self.server == None and self.user == None and self.channel == None:
+            logger.error("Must supply the user, server, and channel.")
+            return False
+        else:
+            values = (self.user, self.server, self.channel, self.idea, self.ideaDate)
+
+        try:
+            cur = self.database.connection.cursor()
+            cur.execute(insertSQL, values)
+
+            # Save (commit) the changes
+            self.database.connection.commit()
+            cur.close()
+            return True
+
+        except BaseException as ex:
+            logger.error("There was a problem inserting the ideas record: {0}".format(ex))
+            return False
+
 class BaseUsage:
     def __init__(self, database, user, server, channel):
         """
