@@ -476,7 +476,6 @@ class Abbot(discord.Client):
         iterRoles = iter(member.roles)
         next(iterRoles) # First role is always @everyone, so ignore that one.
         roleMessage = ', '.join([role.name for role in iterRoles])
-        gameMessage = "Playing {0}.".format(member.game) if member.game != None else ""
         em = discord.Embed(
             title='{0.display_name}{1} AKA {0.name}#{0.discriminator}'.format(member, (" :robot:" if member.bot else "")), 
             colour=member.colour)
@@ -674,16 +673,12 @@ class Abbot(discord.Client):
         else:
             usage = MessageUsage(self.database, member.id, message.server.id, message.channel.id)
 
-        logger.debug("[Usage]: query user = {0}, args = {1}".format(member.mention, leftover_args))
-
         em = discord.Embed(
-            title='{0} usage summary for {1.name}#{1.discriminator}'.format(target.upper(), member), 
-            description='{0} words\n{1} characters\nLongest Message: {2}\nLast Message: {3}.'.format(
-                usage.wordCount,
-                usage.characterCount,
-                usage.maxMessageLength,
-                usage.lastMessageTimestamp), 
-            colour=0x2e456b)
+            title='{0} usage summary for {1.name}#{1.discriminator}'.format(target.upper(), member), colour=0x2e456b)
+        em.add_field(name='# Words', value=usage.wordCount, inline=True)
+        em.add_field(name='# Characters', value=usage.characterCount, inline=True)
+        em.add_field(name='Max Message', value=usage.maxMessageLength, inline=True)
+        em.add_field(name='Last Message', value=usage.lastMessageTimestamp, inline=False)
         em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
         em.set_thumbnail(url=member.avatar_url)
         return Response(em, reply=False, embed=True)
