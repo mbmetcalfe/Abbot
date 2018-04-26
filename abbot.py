@@ -24,7 +24,7 @@ from textwrap import dedent
 from constants import VERSION as BOTVERSION
 from constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 import praw
-from db import MessageUsage, AbbotDatabase
+from db import AbbotDatabase, MessageUsage, Idea
 
 import event
 
@@ -490,14 +490,18 @@ class Abbot(discord.Client):
         em.set_thumbnail(url=member.avatar_url)
         return Response(em, reply=False, embed=True)
 
-    async def cmd_idea(self, channel, author, permissions, idea):
+    async def cmd_idea(self, message, idea):
         """
         Adds an idea to the idea box.
         Usage:
             {command_prefix}idea <text>
         """
-        logger.info('IDEA: {0} from {1}.'.format(idea, author.name))
-        return Response("Thanks for your submission", reply=True, delete_after=30 if channel != 'Direct Message' else 0)
+        idea = Idea(self.database, message.author.id, message.server.id, message.channel.id, idea)
+        success = idea.insert()
+        
+        if success:
+            logger.info('IDEA: {0} from {1}.'.format(idea, message.author.name))
+            return Response("Thanks for your submission", reply=True, delete_after=30 if message.channel != 'Direct Message' else 0)
 
     async def cmd_choose(self, channel, author, message, permissions, leftover_args):
         """
