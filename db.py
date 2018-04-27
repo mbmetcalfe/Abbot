@@ -289,3 +289,85 @@ class MessageUsage(BaseUsage):
         except BaseException as ex:
             logger.error("There was a problem updating the usage_messages record: {0}".format(ex))
             return False
+
+class ReactionUsage(BaseUsage):
+    def __init__(self, database, user, server, channel):
+        """
+        Create a model for the reaction usage.
+        """
+        self.database = database
+        self.server = server
+        self.user = user
+        self.channel = channel
+        self.userReactionCount = 0
+        self.userMessagesReacted = 0
+        self.userReactionsReceived = 0
+
+        self.get(user, server, channel)
+
+    def get(self, user, server, channel):
+        """
+        Get the reaction usage information for the specific user/server/channel.
+        At least one of user, server, or channel must be supplied.
+        """
+        sql = """select user, 
+            sum(user_reaction_count) as user_reaction_count, 
+            sum(user_messages_reacted) as user_messages_reacted, 
+            sum(user_reactions_received) as user_reactions_received
+            from usage_reactions """
+        if server == None and user == None and channel == None:
+            logger.error("Must supply at least user, server, or channel.")
+            return False
+        else:
+            # Build the where clause
+            sql += "where "
+            values = ()
+
+            if user != None:
+                sql += "user = ? "
+                values += (user,)
+
+            if server != None:
+                sql += " and " if len(values) > 0 else ""
+                sql += "server = ? "
+                values += (server,)
+
+            if channel != None:
+                sql += " and " if len(values) > 0 else ""
+                sql += "channel = ? "
+                values += (channel,)
+
+        # Add in the group by
+        sql += "group by user "
+
+        # TODO: Add ability to state which ranking user wants.
+        # Add in the order by
+        sql += "order by 2 desc, 4 desc" # 2 is the user reaction count
+        if self.database != None:
+            try:
+                # Check that we have all the necessary data first.
+                if self.database.connection == None:
+                    self.database.connect()
+
+                self.database.connection.row_factory = sqlite3.Row
+                cur = self.database.connection.cursor()
+                cur.execute(sql, values)
+                row = cur.fetchone() # There "should" only be one record!
+                if row != None:
+                    self.wordCount = row['word_count']
+                    self.characterCount = row['character_count']
+                    self.maxMessageLength = row['max_message_length']
+                    self.lastMessageTimestamp = row['last_message_timestamp']
+                    logger.debug("{0} words; {1} characters; max message length {2} for server/channel/user: {3}/{4}/{5}.".format(
+                        self.wordCount, self.characterCount, self.maxMessageLength,
+                        self.server, self.channel, self.user))
+
+                cur.close()
+                return True
+
+            except Exception as ex:
+                logger.error("Problem getting message usage: {0}".format(ex))
+                return False
+        else:
+            logger.error("No valid DB connection available.")
+            return False
