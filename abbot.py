@@ -922,6 +922,11 @@ class Abbot(discord.Client):
     async def log_reaction_usage(self, reaction, user, add):
         """
         Log the reaction usage for the user reacting and the reacted user.
+
+        Keyword arguments:
+        reaction -- The reaction being added or removed.
+        user     -- The user performing the reaction.
+        add      -- If the reaction is being added or removed.
         """
         # First log the user that is reacting.
         reactingUserUsage = ReactionUsage(self.database, user.id, reaction.message.server.id, reaction.message.channel.id)
