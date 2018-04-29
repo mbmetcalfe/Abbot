@@ -655,7 +655,8 @@ class Abbot(discord.Client):
         else:
             member = author
 
-        usage = None
+        messageUsage = None
+        reactionUsage = None
         rank = False
         queryServer = False
         target = "#" + message.channel.name
@@ -668,17 +669,32 @@ class Abbot(discord.Client):
             else:
                 logger.debug("Unsupported usage argument '{0}'".format(arg))
 
-        if queryServer:
-            usage = MessageUsage(self.database, member.id, message.server.id, None)
-        else:
-            usage = MessageUsage(self.database, member.id, message.server.id, message.channel.id)
+        messageUsage = MessageUsage(self.database, member.id, message.server.id, None if queryServer else message.channel.id)
+        reactionUsage = ReactionUsage(self.database, member.id, message.server.id, None if queryServer else message.channel.id)
 
         em = discord.Embed(
             title='{0} usage summary for {1.name}#{1.discriminator}'.format(target.upper(), member), colour=0x2e456b)
-        em.add_field(name='# Words', value=usage.wordCount, inline=True)
-        em.add_field(name='# Characters', value=usage.characterCount, inline=True)
-        em.add_field(name='Max Message', value=usage.maxMessageLength, inline=True)
-        em.add_field(name='Last Message', value=usage.lastMessageTimestamp, inline=False)
+        if not messageUsage.newRecord: # If newRecord is true, then there is no reaction usage yet.
+            em.add_field(name="Message Summary", value="A summarized view of how chatty {0} is.".format(member.display_name), inline=False)
+            em.add_field(name='# Words', value=messageUsage.wordCount, inline=True)
+            em.add_field(name='# Characters', value=messageUsage.characterCount, inline=True)
+            em.add_field(name='Max Message', value=messageUsage.maxMessageLength, inline=True)
+            em.add_field(name='Last Message', value=messageUsage.lastMessageTimestamp, inline=False)
+        
+        if not reactionUsage.newRecord: # If newRecord is true, then there is no reaction usage yet.
+            em.add_field(name="Reaction Summary", value="A review of {0}'s messages reacted to and that have received reactions.".format(member.display_name), inline=False)
+            if reactionUsage.userReacted > 0:
+                em.add_field(name="# Reactions", value=reactionUsage.userReacted, inline=True)
+                em.add_field(name="# Message Reacted", value=reactionUsage.messagesReacted, inline=True)
+            if not reactionUsage.reactionsReceived > 0:
+                em.add_field(name="# Reactions Received", value=reactionUsage.reactionsReceived, inline=True)
+                em.add_field(name="# Messages Receiving Actions", value=reactionUsage.messagesReacted, inline=True)
+
+        if member.bot and message.author.id != self.config.owner_id: # Only owner can get bot usage.
+            em.description = "{0} does not want you to see that.".format(member.display_name)
+            em.clear_fields()
+        elif len(em.fields) == 0:
+            em.description = "Nothing to see here yet.\n\nPerhaps {0} prefers to lurk?".format(member.display_name)
         em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
         em.set_thumbnail(url=member.avatar_url)
         return Response(em, reply=False, embed=True)
@@ -917,6 +933,9 @@ class Abbot(discord.Client):
             reactedUserUsage.reactionsReceived += 1 if add else -1
             reactedUserUsage.update()
 
+    async def log_command_usage(self, valid_command, message):
+        logger.debug("log_command_usage: TBD.")
+
 # -----------
 # Secret-Gifter Event Commands
 # -----------
@@ -1044,10 +1063,10 @@ class Abbot(discord.Client):
 
         handler = getattr(self, 'cmd_%s' % command, None)
         if not handler:
-            await self.log_usage("invalid_command", message)
+            await self.log_command_usage(False, message)
             return
         else:
-            await self.log_usage("command", message)
+            await self.log_command_usage(True, message)
 
         if message.channel.is_private:
             if not (message.author.id == self.config.owner_id and (command in pmCommandList)):
@@ -1147,7 +1166,7 @@ class Abbot(discord.Client):
             response = await handler(**handler_kwargs)
             if response and isinstance(response, Response):
                 content = response.content
-                if response.reply:
+                if response.reply and not response.embed:
                     content = '%s, %s' % (message.author.mention, content)
 
                 sentmsg = await self.safe_send_message(
