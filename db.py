@@ -139,6 +139,7 @@ class BaseUsage:
         self.server = server
         self.user = user
         self.channel = channel
+        self.newRecord = True
 
 class MessageUsage(BaseUsage):
     def __init__(self, database, user, server, channel):
@@ -210,6 +211,9 @@ class MessageUsage(BaseUsage):
                     self.characterCount = row['character_count']
                     self.maxMessageLength = row['max_message_length']
                     self.lastMessageTimestamp = row['last_message_timestamp']
+                    self.newRecord = False
+                else:
+                    self.newRecord = True
 
                 cur.close()
                 return True
@@ -318,7 +322,6 @@ class ReactionUsage(BaseUsage):
         self.reactionsReceived = 0
 
         self.get(user, server, channel)
-        logger.debug("messagesReacted {0.messagesReacted}; userReacted {0.userReacted}; messageReactionsReceived {0.messageReactionsReceived}; reactionsReceived {0.reactionsReceived}".format(self))
 
     def get(self, user, server, channel):
         """
@@ -374,6 +377,9 @@ class ReactionUsage(BaseUsage):
                     self.userReacted = row['user_reacted_count']
                     self.messageReactionsReceived = row['message_reactions_received_count']
                     self.reactionsReceived = row['reactions_received_count']
+                    self.newRecord = False
+                else:
+                    self.newRecord = True
 
                 cur.close()
                 return True

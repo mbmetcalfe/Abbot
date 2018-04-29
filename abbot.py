@@ -891,30 +891,30 @@ class Abbot(discord.Client):
             messageUsage.maxMessageLength = charCount if charCount > messageUsage.maxMessageLength else messageUsage.maxMessageLength
             messageUsage.update()
 
-    async def log_reaction_usage(self, reaction, user):
+    async def log_reaction_usage(self, reaction, user, add):
         """
         Log the reaction usage for the user reacting and the reacted user.
         """
         # First log the user that is reacting.
         reactingUserUsage = ReactionUsage(self.database, user.id, reaction.message.server.id, reaction.message.channel.id)
-        if reactingUserUsage.userReacted == 0 and reactingUserUsage.messagesReacted == 0 and reactingUserUsage.reactionsReceived == 0 and reactingUserUsage.messageReactionsReceived == 0: # Nothing recorded yet.
+        if reactingUserUsage.newRecord and add: # Nothing recorded yet.
             reactingUserUsage.messagesReacted = 1
             reactingUserUsage.userReacted = 1
             reactingUserUsage.insert()
         else:
-            reactingUserUsage.messagesReacted += 1
-            reactingUserUsage.userReacted += 1
+            reactingUserUsage.messagesReacted += 1 if add else -1
+            reactingUserUsage.userReacted += 1 if add else -1
             reactingUserUsage.update()
 
         # Then log the user that is being reacted to.
         reactedUserUsage = ReactionUsage(self.database, reaction.message.author.id, reaction.message.server.id, reaction.message.channel.id)
-        if reactedUserUsage.userReacted == 0 and reactedUserUsage.messagesReacted == 0 and reactedUserUsage.reactionsReceived == 0 and reactedUserUsage.messageReactionsReceived == 0: # Nothing recorded yet.
+        if reactedUserUsage.newRecord and add: # Nothing recorded yet.
             reactedUserUsage.messageReactionsReceived = 1
             reactedUserUsage.reactionsReceived = 1
             reactedUserUsage.insert()
         else:
-            reactedUserUsage.messageReactionsReceived += 1
-            reactedUserUsage.reactionsReceived += 1
+            reactedUserUsage.messageReactionsReceived += 1 if add else -1
+            reactedUserUsage.reactionsReceived += 1 if add else -1
             reactedUserUsage.update()
 
 # -----------
@@ -1180,12 +1180,15 @@ class Abbot(discord.Client):
 
     async def on_reaction_add(self, reaction, user):
         """
-        Log the reaction information.
+        Log the addition reaction information.
         """
-        logger.debug("Reaction: {0.count}, {0.emoji}, {0.me}, {0.message.id}; User: {1}".format(reaction, user.display_name))
-        #if user != self.user:
-        await self.log_reaction_usage(reaction, user)
+        await self.log_reaction_usage(reaction, user, True)
 
+    async def on_reaction_remove(self, reaction, user):
+        """
+        Log when the reaction is removed.
+        """
+        await self.log_reaction_usage(reaction, user, False)
 
     # async def on_message_edit(self, before, after):
     #     logger.debug("Before: {0}\nAfter: {1}.".format(before.content, after.content))
