@@ -24,7 +24,7 @@ from textwrap import dedent
 from constants import VERSION as BOTVERSION
 from constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 import praw
-from db import AbbotDatabase, MessageUsage, Idea
+from db import AbbotDatabase, MessageUsage, ReactionUsage, Idea
 
 import event
 
@@ -857,16 +857,14 @@ class Abbot(discord.Client):
 #            await self.safe_add_reaction(message, emoji)
         
 
-    async def log_usage(self, message_type, message):
+    async def log_message_usage(self, message):
         """
-        Log some usage statics for the user based on message type.
+        Log the message usage for the user.
         """
-        #TODO: Add a command to get a user's stats (self or other).
         #TODO: Add a command to show leaderboard: longest single message, most messages, most typed characters, most commands used,
         #   most common command, least used command.
         #TODO: Add a command for generic stats, similar to the leaderboard.
         #TODO: Consider a task to clean up data at the start of the month and/or push data to a "totals" table.
-        #TODO: Log stats by server (message.server) and channel (message.channel).
         #TODO: Log mentions (channel, user, role), reactions.
         #   on_reaction_add/on_reaction_remove
         #TODO: Consider reacting to on_message_edit and updating the stats accordingly (for non-commands only).
@@ -876,33 +874,49 @@ class Abbot(discord.Client):
         if message.author.bot: # We don't really care to track bot usage
             return
 
-        if message_type == "command":
-            logger.debug("{0.name}#{0.discriminator} ({0.id}): Command use: {1}".format(message.author, message.content))
-            #TODO: Add/Increase the command count use for the user.
-        elif message_type == "invalid":
-            logger.debug("{0.name}#{0.discriminator} ({0.id}): Invalid command: {1}".format(message.author, message.content))
-            #TODO: Add command to table of invalid commands.  Useful for later determining if commands needs to be renamed/added/etc.
-        elif message_type == "message":
-            content = message.content
-            logger.debug("{0.name}#{0.discriminator} ({0.id}): Non-command use: {1}".format(message.author, message.content))
-            messageUsage = MessageUsage(self.database, message.author.id, message.server.id, message.channel.id)
-            if messageUsage.lastMessageTimestamp == None:
-                messageUsage.wordCount = len(content.split())
-                messageUsage.characterCount = len(content)
-                messageUsage.maxMessageLength = messageUsage.characterCount
-                
-                messageUsage.insert()
-            else:
-                contentSize = len(content.split())
-                charCount = len(content)
-                messageUsage.wordCount += contentSize
-                messageUsage.characterCount += charCount
-                messageUsage.maxMessageLength = charCount if charCount > messageUsage.maxMessageLength else messageUsage.maxMessageLength
-                messageUsage.update()
+        content = message.content
+        logger.debug("{0.name}#{0.discriminator} ({0.id}): Non-command use: {1}".format(message.author, message.content))
+        messageUsage = MessageUsage(self.database, message.author.id, message.server.id, message.channel.id)
+        if messageUsage.lastMessageTimestamp == None:
+            messageUsage.wordCount = len(content.split())
+            messageUsage.characterCount = len(content)
+            messageUsage.maxMessageLength = messageUsage.characterCount
             
+            messageUsage.insert()
         else:
-            logger.error("{0.name}#{0.discriminator} ({0.id}): Unhandled message type '{1}': {2}".format(message.author, message_type, message.content))
-        
+            contentSize = len(content.split())
+            charCount = len(content)
+            messageUsage.wordCount += contentSize
+            messageUsage.characterCount += charCount
+            messageUsage.maxMessageLength = charCount if charCount > messageUsage.maxMessageLength else messageUsage.maxMessageLength
+            messageUsage.update()
+
+    async def log_reaction_usage(self, reaction, user):
+        """
+        Log the reaction usage for the user reacting and the reacted user.
+        """
+        # First log the user that is reacting.
+        reactingUserUsage = ReactionUsage(self.database, user.id, reaction.message.server.id, reaction.message.channel.id)
+        if reactingUserUsage.userReacted == 0 and reactingUserUsage.messagesReacted == 0 and reactingUserUsage.reactionsReceived == 0 and reactingUserUsage.messageReactionsReceived == 0: # Nothing recorded yet.
+            reactingUserUsage.messagesReacted = 1
+            reactingUserUsage.userReacted = 1
+            reactingUserUsage.insert()
+        else:
+            reactingUserUsage.messagesReacted += 1
+            reactingUserUsage.userReacted += 1
+            reactingUserUsage.update()
+
+        # Then log the user that is being reacted to.
+        reactedUserUsage = ReactionUsage(self.database, reaction.message.author.id, reaction.message.server.id, reaction.message.channel.id)
+        if reactedUserUsage.userReacted == 0 and reactedUserUsage.messagesReacted == 0 and reactedUserUsage.reactionsReceived == 0 and reactedUserUsage.messageReactionsReceived == 0: # Nothing recorded yet.
+            reactedUserUsage.messageReactionsReceived = 1
+            reactedUserUsage.reactionsReceived = 1
+            reactedUserUsage.insert()
+        else:
+            reactedUserUsage.messageReactionsReceived += 1
+            reactedUserUsage.reactionsReceived += 1
+            reactedUserUsage.update()
+
 # -----------
 # Secret-Gifter Event Commands
 # -----------
@@ -1014,7 +1028,7 @@ class Abbot(discord.Client):
         message_content = message.content.strip()
         if not message_content.startswith(self.config.command_prefix):
             if message.author != self.user:
-                await self.log_usage("message", message)
+                await self.log_message_usage(message)
                 await self.try_add_reaction(message)
             return
 
@@ -1164,6 +1178,17 @@ class Abbot(discord.Client):
             if self.config.debug_mode:
                 await self.safe_send_message(message.channel, '```\n%s\n```' % traceback.format_exc())
 
+    async def on_reaction_add(self, reaction, user):
+        """
+        Log the reaction information.
+        """
+        logger.debug("Reaction: {0.count}, {0.emoji}, {0.me}, {0.message.id}; User: {1}".format(reaction, user.display_name))
+        #if user != self.user:
+        await self.log_reaction_usage(reaction, user)
+
+
+    # async def on_message_edit(self, before, after):
+    #     logger.debug("Before: {0}\nAfter: {1}.".format(before.content, after.content))
 
     async def _auto_presence_task(self):
         await self.wait_until_ready()

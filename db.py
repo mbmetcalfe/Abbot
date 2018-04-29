@@ -210,9 +210,6 @@ class MessageUsage(BaseUsage):
                     self.characterCount = row['character_count']
                     self.maxMessageLength = row['max_message_length']
                     self.lastMessageTimestamp = row['last_message_timestamp']
-                    logger.debug("{0} words; {1} characters; max message length {2} for server/channel/user: {3}/{4}/{5}.".format(
-                        self.wordCount, self.characterCount, self.maxMessageLength,
-                        self.server, self.channel, self.user))
 
                 cur.close()
                 return True
@@ -229,7 +226,16 @@ class MessageUsage(BaseUsage):
         Insert a message usage record.  If the object does not have a user, server,
         and channel set the insert cannot be done.
         """
-        insertSQL = "insert into usage_messages (user, server, channel, word_count, character_count, max_message_length, last_message_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        insertSQL = """
+            insert into usage_messages (
+                user, 
+                server, 
+                channel, 
+                word_count, 
+                character_count, 
+                max_message_length, 
+                last_message_timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)"""
         values = ()
 
         # Check that we have all the necessary data first.
@@ -262,7 +268,14 @@ class MessageUsage(BaseUsage):
         Update a message usage record.  If the object does not have a user, server,
         and channel set the update cannot be done.
         """
-        updateSQL = "update usage_messages set word_count = ?, character_count = ?, max_message_length = ?, last_message_timestamp = ? where user = ? and server = ? and channel = ?"
+        updateSQL = """update usage_messages
+            set word_count = ?, 
+                character_count = ?, 
+                max_message_length = ?, 
+                last_message_timestamp = ? 
+            where user = ? and 
+            server = ? and 
+            channel = ?"""
         values = ()
 
         # Check that we have all the necessary data first.
@@ -299,11 +312,13 @@ class ReactionUsage(BaseUsage):
         self.server = server
         self.user = user
         self.channel = channel
-        self.userReactionCount = 0
-        self.userMessagesReacted = 0
-        self.userReactionsReceived = 0
+        self.messagesReacted = 0
+        self.userReacted = 0
+        self.messageReactionsReceived = 0
+        self.reactionsReceived = 0
 
         self.get(user, server, channel)
+        logger.debug("messagesReacted {0.messagesReacted}; userReacted {0.userReacted}; messageReactionsReceived {0.messageReactionsReceived}; reactionsReceived {0.reactionsReceived}".format(self))
 
     def get(self, user, server, channel):
         """
@@ -311,9 +326,10 @@ class ReactionUsage(BaseUsage):
         At least one of user, server, or channel must be supplied.
         """
         sql = """select user, 
-            sum(user_reaction_count) as user_reaction_count, 
-            sum(user_messages_reacted) as user_messages_reacted, 
-            sum(user_reactions_received) as user_reactions_received
+            sum(messages_reacted_count) as messages_reacted_count, 
+            sum(user_reacted_count) as user_reacted_count, 
+            sum(message_reactions_received_count) as message_reactions_received_count,
+            sum(reactions_received_count) as reactions_received_count
             from usage_reactions """
         if server == None and user == None and channel == None:
             logger.error("Must supply at least user, server, or channel.")
@@ -342,7 +358,7 @@ class ReactionUsage(BaseUsage):
 
         # TODO: Add ability to state which ranking user wants.
         # Add in the order by
-        sql += "order by 2 desc, 4 desc" # 2 is the user reaction count
+        sql += "order by 2 desc, 4 desc" # 2 is the messages reacted count, 4 is the message reactions received count
         if self.database != None:
             try:
                 # Check that we have all the necessary data first.
@@ -354,20 +370,96 @@ class ReactionUsage(BaseUsage):
                 cur.execute(sql, values)
                 row = cur.fetchone() # There "should" only be one record!
                 if row != None:
-                    self.wordCount = row['word_count']
-                    self.characterCount = row['character_count']
-                    self.maxMessageLength = row['max_message_length']
-                    self.lastMessageTimestamp = row['last_message_timestamp']
-                    logger.debug("{0} words; {1} characters; max message length {2} for server/channel/user: {3}/{4}/{5}.".format(
-                        self.wordCount, self.characterCount, self.maxMessageLength,
-                        self.server, self.channel, self.user))
+                    self.messagesReacted = row['messages_reacted_count']
+                    self.userReacted = row['user_reacted_count']
+                    self.messageReactionsReceived = row['message_reactions_received_count']
+                    self.reactionsReceived = row['reactions_received_count']
 
                 cur.close()
                 return True
 
             except Exception as ex:
-                logger.error("Problem getting message usage: {0}".format(ex))
+                logger.error("Problem getting reaction usage: {0}".format(ex))
                 return False
         else:
             logger.error("No valid DB connection available.")
+            return False
+
+    def insert(self):
+        """
+        Insert a reaction usage record.  If the object does not have a user, server,
+        and channel set the insert cannot be done.
+        """
+        insertSQL = """
+            insert into usage_reactions (
+                user, 
+                server, 
+                channel, 
+                messages_reacted_count, 
+                user_reacted_count, 
+                message_reactions_received_count, 
+                reactions_received_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)"""
+        values = ()
+
+        # Check that we have all the necessary data first.
+        if self.database.connection == None:
+            self.database.connect()
+
+        if self.server == None and self.user == None and self.channel == None:
+            logger.error("Must supply the user, server, and channel.")
+            return False
+        else:
+            values = (self.user, self.server, self.channel, self.messagesReacted, self.userReacted, self.messageReactionsReceived, self.reactionsReceived)
+
+        try:
+            cur = self.database.connection.cursor()
+            cur.execute(insertSQL, values)
+
+            # Save (commit) the changes
+            self.database.connection.commit()
+            cur.close()
+            return True
+
+        except BaseException as ex:
+            logger.error("There was a problem inserting the usage_messages record: {0}".format(ex))
+            return False
+
+    def update(self):
+        """
+        Update a reaction usage record.  If the object does not have a user, server,
+        and channel set the update cannot be done.
+        """
+        updateSQL = """update usage_reactions
+            set messages_reacted_count = ?, 
+                user_reacted_count = ?, 
+                message_reactions_received_count = ?, 
+                reactions_received_count = ? 
+            where user = ? and 
+            server = ? and 
+            channel = ?"""
+        values = ()
+
+        # Check that we have all the necessary data first.
+        if self.database.connection == None:
+            self.database.connect()
+
+        if self.server == None and self.user == None and self.channel == None:
+            logger.error("Must supply the user, server, and channel.")
+            return False
+        else:
+            values = (self.messagesReacted, self.userReacted, self.messageReactionsReceived, self.reactionsReceived, self.user, self.server, self.channel)
+
+        try:
+            # self.database.connect()
+            cur = self.database.connection.cursor()
+            cur.execute(updateSQL, values)
+
+            # Save (commit) the changes
+            self.database.connection.commit()
+            cur.close()
+            return True
+
+        except BaseException as ex:
+            logger.error("There was a problem updating the usage_reactions record: {0}".format(ex))
             return False
