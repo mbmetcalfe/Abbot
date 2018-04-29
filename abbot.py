@@ -489,18 +489,30 @@ class Abbot(discord.Client):
         em.set_thumbnail(url=member.avatar_url)
         return Response(em, reply=False, embed=True)
 
-    async def cmd_idea(self, message, idea):
+    async def cmd_idea(self, message, leftover_args):
         """
         Adds an idea to the idea box.
         Usage:
             {command_prefix}idea <text>
         """
-        idea = Idea(self.database, message.author.id, message.server.id, message.channel.id, idea)
+        text = " ".join(leftover_args)
+        
+        idea = Idea(self.database, message.author.id, message.server.id, message.channel.id, text)
         success = idea.insert()
         
         if success:
-            logger.info('IDEA: {0} from {1}.'.format(idea, message.author.name))
-            return Response("Thanks for your submission", reply=True, delete_after=30 if message.channel != 'Direct Message' else 0)
+            return Response("Thanks for your submission.", reply=True, delete_after=30 if message.channel != 'Direct Message' else 0)
+        else:
+            logger.error("There was a problem saving the submitted idea.")
+            em = discord.Embed(
+                title='Error', 
+                description='There was a problem submitting your idea.  Please try again later and if problem persists, contact the developer.',
+                colour=discord.Colour.dark_red())
+            em.add_field(name='Command', value='Idea', inline=False)
+            em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=message.author.avatar_url)
+            em.set_thumbnail(url=message.author.avatar_url)
+
+            return Response(em, reply=False, embed=True, delete_after=30 if message.channel != 'Direct Message' else 0)
 
     async def cmd_choose(self, channel, author, message, permissions, leftover_args):
         """
