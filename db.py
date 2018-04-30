@@ -504,7 +504,7 @@ class MessageUsageRank(UsageRank):
         """
         UsageRank.__init__(self, database, server, channel, maxRankings)
         self.rankings = []
-        self.top = {"Most Words": {"User": None, "Size": 0}, "Most Characters": {"User": None, "Size": 0}, "Longest Message": {"User": None, "Size": 0}}
+        # self.top = {"Most Words": {"User": None, "Size": 0}, "Most Characters": {"User": None, "Size": 0}, "Longest Message": {"User": None, "Size": 0}}
 
     def getRankings(self, columnName):
         """
@@ -574,3 +574,99 @@ class MessageUsageRank(UsageRank):
 
     def getRankingsByLongestMessage(self):
         self.getRankings('max_message_length')
+
+class ReactionUsageRank(UsageRank):
+    """
+    This class is used to collect and report reaction usage rankings.
+    """
+    def __init__(self, database, server, channel, maxRankings=5):
+        """
+        Initialize the reaction rank usage class.
+        """
+        UsageRank.__init__(self, database, server, channel, maxRankings)
+        self.rankings = []
+        # self.top = {"Most Words": {"User": None, "Size": 0}, "Most Characters": {"User": None, "Size": 0}, "Longest Message": {"User": None, "Size": 0}}
+
+    def getRankings(self, columnName):
+        """
+        Get the ranking information for the specific user/server/channel for the identified column.
+        At least one of user, server, or channel must be supplied.
+        Possible values for columnName: messages_reacted_count, user_reacted_count, message_reactions_received_count, reactions_received_count
+        """
+        self.rankings.clear()
+        sql = """select user, 
+            sum({column_name}) as {column_name} 
+            from usage_reactions """.format(column_name=columnName)
+        if self.server == None and self.channel == None:
+            logger.error("Must supply at least server, or channel.")
+            return False
+        else:
+            # Build the where clause
+            sql += "where "
+            values = ()
+
+            if self.server != None:
+                sql += "server = ? "
+                values += (self.server,)
+
+            if self.channel != None:
+                sql += " and " if len(values) > 0 else ""
+                sql += "channel = ? "
+                values += (self.channel,)
+
+        # Add in the group by
+        sql += "group by user "
+
+        # Add in the order by
+        sql += "order by {column_name} desc, user asc ".format(column_name=columnName)
+        # Add the limit
+        sql += "limit ?"
+        values += (self.maxRankings,)
+
+        if self.database != None:
+            try:
+                # Check that we have all the necessary data first.
+                if self.database.connection == None:
+                    self.database.connect()
+
+                self.database.connection.row_factory = sqlite3.Row
+                cur = self.database.connection.cursor()
+                cur.execute(sql, values)
+                for row in cur:
+                    messageUsage = MessageUsage(self.database, row['user'], self.server, self.channel, False)
+                    messageUsage.wordCount = row[columnName]
+                    self.rankings.append(messageUsage)
+                
+                cur.close()
+                return True
+
+            except Exception as ex:
+                logger.error("Problem getting message usage: {0}".format(ex))
+                return False
+        else:
+            logger.error("No valid DB connection available.")
+            return False
+
+    def getRankingsByMessagesReacted(self):
+        """
+        Get the top users that have reacted to the most messages.
+        """
+        self.getRankings('messages_reacted_count')
+
+    def getRankingsByUserReacted(self):
+        """
+        Get the top users that have reacted the most.
+        """
+        self.getRankings('user_reacted_count')
+
+    def getRankingsByMessageReactionsReceived(self):
+        """
+        Get the top users that have the most reacted messages.
+        """
+        self.getRankings('message_reactions_received_count')
+
+    def getRankingsByUserReactionsReceived(self):
+        """
+        Get the top users that have the most reactions to their messages.
+        """
+        self.getRankings('reactions_received_count')

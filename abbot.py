@@ -24,7 +24,7 @@ from textwrap import dedent
 from constants import VERSION as BOTVERSION
 from constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 import praw
-from db import AbbotDatabase, MessageUsage, ReactionUsage, Idea, MessageUsageRank
+from db import AbbotDatabase, MessageUsage, ReactionUsage, Idea, MessageUsageRank, ReactionUsageRank
 
 import event
 
@@ -712,13 +712,16 @@ class Abbot(discord.Client):
             em.set_thumbnail(url=member.avatar_url)
             return Response(em, reply=False, embed=True)
         else: # Rank
-            messageUsageRank = MessageUsageRank(database=self.database, server=message.server.id, channel=None if queryServer else message.channel.id, maxRankings=5)
-
             em = discord.Embed(
                 title='{0} Rankings'.format(target.upper()), colour=0x2e456b)
             
+            # --------------------------------------------------------------------------------------------------------------
+            # Message Rankings
+            # --------------------------------------------------------------------------------------------------------------
+            messageUsageRank = MessageUsageRank(database=self.database, server=message.server.id, channel=None if queryServer else message.channel.id, maxRankings=5)
+
             # Get word count rankings
-            messageRankings = ""
+            rankingsOutput = ""
             messageUsageRank.getRankingsByWordCount()
             numRankings = len(messageUsageRank.rankings)
             p = inflect.engine()
@@ -726,44 +729,82 @@ class Abbot(discord.Client):
                 currentRank = 1
                 for rank in messageUsageRank.rankings:
                     # TODO: Pretty up the output!
-                    messageRankings += "{2}: {0}........{1}\n".format(discord.utils.get(message.server.members, id=rank.user), rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
-                em.add_field(name="Top {0} Word Count".format(len(messageUsageRank.rankings)), value=messageRankings, inline=False)
+                em.add_field(name="Top {0} Word Count".format(len(messageUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
 
             # Get character count rankings
-            messageRankings = ""
+            rankingsOutput = ""
             messageUsageRank.getRankingsByCharacterCount()
             numRankings = len(messageUsageRank.rankings)
             if len(messageUsageRank.rankings) > 0:
                 currentRank = 1
                 for rank in messageUsageRank.rankings:
                     # TODO: Pretty up the output!
-                    messageRankings += "{2}: {0}........{1}\n".format(discord.utils.get(message.server.members, id=rank.user), rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
-                em.add_field(name="Top {0} Character Count".format(len(messageUsageRank.rankings)), value=messageRankings, inline=False)
+                em.add_field(name="Top {0} Character Count".format(len(messageUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
 
             # Get character count rankings
-            messageRankings = ""
+            rankingsOutput = ""
             messageUsageRank.getRankingsByLongestMessage
             numRankings = len(messageUsageRank.rankings)
             if len(messageUsageRank.rankings) > 0:
                 currentRank = 1
                 for rank in messageUsageRank.rankings:
                     # TODO: Pretty up the output!
-                    messageRankings += "{2}: {0}........{1}\n".format(discord.utils.get(message.server.members, id=rank.user), rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
-                em.add_field(name="Top {0} Longest Message".format(len(messageUsageRank.rankings)), value=messageRankings, inline=False)
+                em.add_field(name="Top {0} Longest Message".format(len(messageUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
 
+            # --------------------------------------------------------------------------------------------------------------
+            # Reactions Rankings
+            # --------------------------------------------------------------------------------------------------------------
+            reactionUsageRank = ReactionUsageRank(database=self.database, server=message.server.id, channel=None if queryServer else message.channel.id, maxRankings=5)
+
+            # Get user reacted rankings
+            rankingsOutput = ""
+            reactionUsageRank.getRankingsByUserReacted()
+            numRankings = len(reactionUsageRank.rankings)
+            p = inflect.engine()
+            if numRankings > 0:
+                currentRank = 1
+                for rank in reactionUsageRank.rankings:
+                    # TODO: Pretty up the output!
+                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    currentRank += 1
+
+                em.add_field(name="Top {0} Reaction User".format(len(reactionUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
+
+            # Get user reactions rankings
+            rankingsOutput = ""
+            reactionUsageRank.getRankingsByUserReactionsReceived()
+            numRankings = len(reactionUsageRank.rankings)
+            if len(reactionUsageRank.rankings) > 0:
+                currentRank = 1
+                for rank in reactionUsageRank.rankings:
+                    # TODO: Pretty up the output!
+                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    currentRank += 1
+
+                em.add_field(name="Top {0} Reacted User".format(len(reactionUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
+
+            # --------------------------------------------------------------------------------------------------------------
+            # Wrap it up.
+            # --------------------------------------------------------------------------------------------------------------
             if len(em.fields) == 0:
                 em.description = "Nothing to see here yet."
             em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
             em.set_thumbnail(url=member.avatar_url)
             return Response(em, reply=False, embed=True)
-
-
 
 # -----------
 # Owner-only commands
