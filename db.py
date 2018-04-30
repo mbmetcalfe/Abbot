@@ -8,6 +8,9 @@ from pathlib import Path
 DATABASE_DDL = 'config/abbot.sqlite3.sql'
 
 class AbbotDatabase:
+    """
+    Abbot's Database class.  Used to keep track of the database name and connection.
+    """
     def __init__(self, databaseName):
         """
         Initialize a database.
@@ -89,6 +92,9 @@ class AbbotDatabase:
 
 
 class Idea:
+    """
+    This class is used to represent an idea record in the database.
+    """
     def __init__(self, database, user, server, channel, idea):
         """
         Initialize the idea.
@@ -131,6 +137,9 @@ class Idea:
             return False
 
 class BaseUsage:
+    """
+    The base class for usage information.
+    """
     def __init__(self, database, user, server, channel):
         """
         Initialize the base usage class.
@@ -142,20 +151,21 @@ class BaseUsage:
         self.newRecord = True
 
 class MessageUsage(BaseUsage):
-    def __init__(self, database, user, server, channel):
+    """
+    This class represents a usage_messages record and can insert or update records.
+    """
+    def __init__(self, database, user, server, channel, fetch=True):
         """
         Create a model for the message usage.
         """
-        self.database = database
-        self.server = server
-        self.user = user
-        self.channel = channel
+        BaseUsage.__init__(self, database, user, server, channel)
         self.wordCount = 0
         self.characterCount = 0
         self.maxMessageLength = 0
         self.lastMessageTimestamp = None
 
-        self.get(user, server, channel)
+        if fetch:
+            self.get(user, server, channel)
     
     def get(self, user, server, channel):
         """
@@ -266,7 +276,6 @@ class MessageUsage(BaseUsage):
             logger.error("There was a problem inserting the usage_messages record: {0}".format(ex))
             return False
 
-
     def update(self):
         """
         Update a message usage record.  If the object does not have a user, server,
@@ -308,20 +317,21 @@ class MessageUsage(BaseUsage):
             return False
 
 class ReactionUsage(BaseUsage):
-    def __init__(self, database, user, server, channel):
+    """
+    This class represents a usage_reactions record and can insert or update records.
+    """
+    def __init__(self, database, user, server, channel, fetch=True):
         """
         Create a model for the reaction usage.
         """
-        self.database = database
-        self.server = server
-        self.user = user
-        self.channel = channel
+        BaseUsage.__init__(self, database, user, server, channel)
         self.messagesReacted = 0
         self.userReacted = 0
         self.messageReactionsReceived = 0
         self.reactionsReceived = 0
 
-        self.get(user, server, channel)
+        if fetch:
+            self.get(user, server, channel)
 
     def get(self, user, server, channel):
         """
@@ -469,3 +479,95 @@ class ReactionUsage(BaseUsage):
         except BaseException as ex:
             logger.error("There was a problem updating the usage_reactions record: {0}".format(ex))
             return False
+
+class UsageRank(BaseUsage):
+    """
+    This is the base class used to collect and report usage rankings.
+    """
+    def __init__(self, database, server, channel, maxRankings=5):
+        """
+        Initialize the rank usage class.
+        """
+        self.database = database
+        self.server = server
+        self.channel = channel
+        self.maxRankings = maxRankings
+        self.rankings = []
+
+class MessageUsageRank(UsageRank):
+    """
+    This class is used to collect and report message usage rankings.
+    """
+    def __init__(self, database, server, channel, maxRankings=5):
+        """
+        Initialize the message rank usage class.
+        """
+        UsageRank.__init__(self, database, server, channel, maxRankings)
+        self.rankings = []
+        self.top = {"Most Words": {"User": None, "Size": 0}, "Most Characters": {"User": None, "Size": 0}, "Longest Message": {"User": None, "Size": 0}}
+
+    def getRankingsByWordCount(self):
+        """
+        Get the word count ranking information for the specific user/server/channel.
+        At least one of user, server, or channel must be supplied.
+        """
+        sql = """select user, 
+            sum(word_count) as word_count 
+            from usage_messages """
+        if self.server == None and self.channel == None:
+            logger.error("Must supply at least server, or channel.")
+            return False
+        else:
+            # Build the where clause
+            sql += "where "
+            values = ()
+
+            if self.server != None:
+                sql += "server = ? "
+                values += (self.server,)
+
+            if self.channel != None:
+                sql += " and " if len(values) > 0 else ""
+                sql += "channel = ? "
+                values += (self.channel,)
+
+        # Add in the group by
+        sql += "group by user "
+
+        # Add in the order by
+        sql += "order by 2 desc, user asc " # 2 is the word count
+        # Add the limit
+        sql += "limit ?"
+        values += (self.maxRankings,)
+
+        if self.database != None:
+            try:
+                # Check that we have all the necessary data first.
+                if self.database.connection == None:
+                    self.database.connect()
+
+                self.database.connection.row_factory = sqlite3.Row
+                cur = self.database.connection.cursor()
+                cur.execute(sql, values)
+                for row in cur:
+                    messageUsage = MessageUsage(self.database, row['user'], self.server, self.channel, False)
+                    messageUsage.wordCount = row['word_count']
+                    # messageUsage.characterCount = row['character_count']
+                    # messageUsage.maxMessageLength = row['max_message_length']
+                    self.rankings.append(messageUsage)
+                
+                cur.close()
+                return True
+
+            except Exception as ex:
+                logger.error("Problem getting message usage: {0}".format(ex))
+                return False
+        else:
+            logger.error("No valid DB connection available.")
+            return False
+
+    def getRankingsByCharacterCount(self, user, server, channel):
+        pass
+
+    def getRankingsByLongestMessage(self, user, server, channel):
+        pass

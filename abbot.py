@@ -24,7 +24,7 @@ from textwrap import dedent
 from constants import VERSION as BOTVERSION
 from constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 import praw
-from db import AbbotDatabase, MessageUsage, ReactionUsage, Idea
+from db import AbbotDatabase, MessageUsage, ReactionUsage, Idea, MessageUsageRank
 
 import event
 
@@ -681,35 +681,41 @@ class Abbot(discord.Client):
             else:
                 logger.debug("Unsupported usage argument '{0}'".format(arg))
 
-        messageUsage = MessageUsage(self.database, member.id, message.server.id, None if queryServer else message.channel.id)
-        reactionUsage = ReactionUsage(self.database, member.id, message.server.id, None if queryServer else message.channel.id)
+        if not rank:
+            messageUsage = MessageUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id)
+            reactionUsage = ReactionUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id)
 
-        em = discord.Embed(
-            title='{0} usage summary for {1.name}#{1.discriminator}'.format(target.upper(), member), colour=0x2e456b)
-        if not messageUsage.newRecord: # If newRecord is true, then there is no reaction usage yet.
-            em.add_field(name="Message Summary", value="A summarized view of how chatty {0} is.".format(member.display_name), inline=False)
-            em.add_field(name='# Words', value=messageUsage.wordCount, inline=True)
-            em.add_field(name='# Characters', value=messageUsage.characterCount, inline=True)
-            em.add_field(name='Max Message', value=messageUsage.maxMessageLength, inline=True)
-            em.add_field(name='Last Message', value=messageUsage.lastMessageTimestamp, inline=False)
-        
-        if not reactionUsage.newRecord: # If newRecord is true, then there is no reaction usage yet.
-            em.add_field(name="Reaction Summary", value="A review of {0}'s messages reacted to and that have received reactions.".format(member.display_name), inline=False)
-            if reactionUsage.userReacted > 0:
-                em.add_field(name="# Reactions", value=reactionUsage.userReacted, inline=True)
-                em.add_field(name="# Message Reacted", value=reactionUsage.messagesReacted, inline=True)
-            if not reactionUsage.reactionsReceived > 0:
-                em.add_field(name="# Reactions Received", value=reactionUsage.reactionsReceived, inline=True)
-                em.add_field(name="# Messages Receiving Actions", value=reactionUsage.messagesReacted, inline=True)
+            em = discord.Embed(
+                title='{0} usage summary for {1.name}#{1.discriminator}'.format(target.upper(), member), colour=0x2e456b)
+            if not messageUsage.newRecord: # If newRecord is true, then there is no reaction usage yet.
+                em.add_field(name="Message Summary", value="A summarized view of how chatty {0} is.".format(member.display_name), inline=False)
+                em.add_field(name='# Words', value=messageUsage.wordCount, inline=True)
+                em.add_field(name='# Characters', value=messageUsage.characterCount, inline=True)
+                em.add_field(name='Max Message', value=messageUsage.maxMessageLength, inline=True)
+                em.add_field(name='Last Message', value=messageUsage.lastMessageTimestamp, inline=False)
+            
+            if not reactionUsage.newRecord: # If newRecord is true, then there is no reaction usage yet.
+                em.add_field(name="Reaction Summary", value="A review of {0}'s messages reacted to and that have received reactions.".format(member.display_name), inline=False)
+                if reactionUsage.userReacted > 0:
+                    em.add_field(name="# Reactions", value=reactionUsage.userReacted, inline=True)
+                    em.add_field(name="# Message Reacted", value=reactionUsage.messagesReacted, inline=True)
+                if not reactionUsage.reactionsReceived > 0:
+                    em.add_field(name="# Reactions Received", value=reactionUsage.reactionsReceived, inline=True)
+                    em.add_field(name="# Messages Receiving Actions", value=reactionUsage.messagesReacted, inline=True)
 
-        if member.bot and message.author.id != self.config.owner_id: # Only owner can get bot usage.
-            em.description = "{0} does not want you to see that.".format(member.display_name)
-            em.clear_fields()
-        elif len(em.fields) == 0:
-            em.description = "Nothing to see here yet.\n\nPerhaps {0} prefers to lurk?".format(member.display_name)
-        em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
-        em.set_thumbnail(url=member.avatar_url)
-        return Response(em, reply=False, embed=True)
+            if member.bot and message.author.id != self.config.owner_id: # Only owner can get bot usage.
+                em.description = "{0} does not want you to see that.".format(member.display_name)
+                em.clear_fields()
+            elif len(em.fields) == 0:
+                em.description = "Nothing to see here yet.\n\nPerhaps {0} prefers to lurk?".format(member.display_name)
+            em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
+            em.set_thumbnail(url=member.avatar_url)
+            return Response(em, reply=False, embed=True)
+        else: # Rank
+            messageUsageRank = MessageUsageRank(database=self.database, server=message.server.id, channel=message.channel.id, maxRankings=5)
+            messageUsageRank.getRankingsByWordCount()
+            for rank in messageUsageRank.rankings:
+                logger.debug("user: {0.user.id}; word count: {0.wordCount}".format(rank))
 
 # -----------
 # Owner-only commands
