@@ -698,10 +698,10 @@ class Abbot(discord.Client):
                 em.add_field(name="Reaction Summary", value="A review of {0}'s messages reacted to and that have received reactions.".format(member.display_name), inline=False)
                 if reactionUsage.userReacted > 0:
                     em.add_field(name="# Reactions", value=reactionUsage.userReacted, inline=True)
-                    em.add_field(name="# Message Reacted", value=reactionUsage.messagesReacted, inline=True)
+                    # em.add_field(name="# Message Reacted", value=reactionUsage.messagesReacted, inline=True)
                 if not reactionUsage.reactionsReceived > 0:
                     em.add_field(name="# Reactions Received", value=reactionUsage.reactionsReceived, inline=True)
-                    em.add_field(name="# Messages Receiving Actions", value=reactionUsage.messagesReacted, inline=True)
+                    # em.add_field(name="# Messages Receiving Actions", value=reactionUsage.messagesReacted, inline=True)
 
             if member.bot and message.author.id != self.config.owner_id: # Only owner can get bot usage.
                 em.description = "{0} does not want you to see that.".format(member.display_name)
