@@ -713,21 +713,49 @@ class Abbot(discord.Client):
             return Response(em, reply=False, embed=True)
         else: # Rank
             messageUsageRank = MessageUsageRank(database=self.database, server=message.server.id, channel=None if queryServer else message.channel.id, maxRankings=5)
-            messageUsageRank.getRankingsByWordCount()
 
             em = discord.Embed(
                 title='{0} Rankings'.format(target.upper()), colour=0x2e456b)
+            
+            # Get word count rankings
             messageRankings = ""
-            if len(messageUsageRank.rankings) > 0:
+            messageUsageRank.getRankingsByWordCount()
+            numRankings = len(messageUsageRank.rankings)
+            p = inflect.engine()
+            if numRankings > 0:
                 currentRank = 1
                 for rank in messageUsageRank.rankings:
-                    logger.debug("user: {0.user}; word count: {0.wordCount}".format(rank))
-                    # messageRankings += "{0:30}{1:6}\n".format(discord.utils.get(message.server.members, id=rank.user), rank.wordCount)
                     # TODO: Pretty up the output!
-                    messageRankings += "{2}: {0}........{1}\n".format(discord.utils.get(message.server.members, id=rank.user), rank.wordCount, currentRank)
+                    messageRankings += "{2}: {0}........{1}\n".format(discord.utils.get(message.server.members, id=rank.user), rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
                 em.add_field(name="Top {0} Word Count".format(len(messageUsageRank.rankings)), value=messageRankings, inline=False)
+
+            # Get character count rankings
+            messageRankings = ""
+            messageUsageRank.getRankingsByCharacterCount()
+            numRankings = len(messageUsageRank.rankings)
+            if len(messageUsageRank.rankings) > 0:
+                currentRank = 1
+                for rank in messageUsageRank.rankings:
+                    # TODO: Pretty up the output!
+                    messageRankings += "{2}: {0}........{1}\n".format(discord.utils.get(message.server.members, id=rank.user), rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    currentRank += 1
+
+                em.add_field(name="Top {0} Character Count".format(len(messageUsageRank.rankings)), value=messageRankings, inline=False)
+
+            # Get character count rankings
+            messageRankings = ""
+            messageUsageRank.getRankingsByLongestMessage
+            numRankings = len(messageUsageRank.rankings)
+            if len(messageUsageRank.rankings) > 0:
+                currentRank = 1
+                for rank in messageUsageRank.rankings:
+                    # TODO: Pretty up the output!
+                    messageRankings += "{2}: {0}........{1}\n".format(discord.utils.get(message.server.members, id=rank.user), rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    currentRank += 1
+
+                em.add_field(name="Top {0} Longest Message".format(len(messageUsageRank.rankings)), value=messageRankings, inline=False)
 
             if len(em.fields) == 0:
                 em.description = "Nothing to see here yet."

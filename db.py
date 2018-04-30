@@ -506,14 +506,16 @@ class MessageUsageRank(UsageRank):
         self.rankings = []
         self.top = {"Most Words": {"User": None, "Size": 0}, "Most Characters": {"User": None, "Size": 0}, "Longest Message": {"User": None, "Size": 0}}
 
-    def getRankingsByWordCount(self):
+    def getRankings(self, columnName):
         """
-        Get the word count ranking information for the specific user/server/channel.
+        Get the ranking information for the specific user/server/channel for the identified column.
         At least one of user, server, or channel must be supplied.
+        Possible values for columnName: word_count, character_count, max_message_length
         """
+        self.rankings.clear()
         sql = """select user, 
-            sum(word_count) as word_count 
-            from usage_messages """
+            sum({column_name}) as {column_name} 
+            from usage_messages """.format(column_name=columnName)
         if self.server == None and self.channel == None:
             logger.error("Must supply at least server, or channel.")
             return False
@@ -535,7 +537,7 @@ class MessageUsageRank(UsageRank):
         sql += "group by user "
 
         # Add in the order by
-        sql += "order by 2 desc, user asc " # 2 is the word count
+        sql += "order by {column_name} desc, user asc ".format(column_name=columnName)
         # Add the limit
         sql += "limit ?"
         values += (self.maxRankings,)
@@ -551,9 +553,7 @@ class MessageUsageRank(UsageRank):
                 cur.execute(sql, values)
                 for row in cur:
                     messageUsage = MessageUsage(self.database, row['user'], self.server, self.channel, False)
-                    messageUsage.wordCount = row['word_count']
-                    # messageUsage.characterCount = row['character_count']
-                    # messageUsage.maxMessageLength = row['max_message_length']
+                    messageUsage.wordCount = row[columnName]
                     self.rankings.append(messageUsage)
                 
                 cur.close()
@@ -566,8 +566,11 @@ class MessageUsageRank(UsageRank):
             logger.error("No valid DB connection available.")
             return False
 
-    def getRankingsByCharacterCount(self, user, server, channel):
-        pass
+    def getRankingsByWordCount(self):
+        self.getRankings('word_count')
 
-    def getRankingsByLongestMessage(self, user, server, channel):
-        pass
+    def getRankingsByCharacterCount(self):
+        self.getRankings('character_count')
+
+    def getRankingsByLongestMessage(self):
+        self.getRankings('max_message_length')
