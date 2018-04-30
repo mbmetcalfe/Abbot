@@ -712,10 +712,30 @@ class Abbot(discord.Client):
             em.set_thumbnail(url=member.avatar_url)
             return Response(em, reply=False, embed=True)
         else: # Rank
-            messageUsageRank = MessageUsageRank(database=self.database, server=message.server.id, channel=message.channel.id, maxRankings=5)
+            messageUsageRank = MessageUsageRank(database=self.database, server=message.server.id, channel=None if queryServer else message.channel.id, maxRankings=5)
             messageUsageRank.getRankingsByWordCount()
-            for rank in messageUsageRank.rankings:
-                logger.debug("user: {0.user.id}; word count: {0.wordCount}".format(rank))
+
+            em = discord.Embed(
+                title='{0} Rankings'.format(target.upper()), colour=0x2e456b)
+            messageRankings = ""
+            if len(messageUsageRank.rankings) > 0:
+                currentRank = 1
+                for rank in messageUsageRank.rankings:
+                    logger.debug("user: {0.user}; word count: {0.wordCount}".format(rank))
+                    # messageRankings += "{0:30}{1:6}\n".format(discord.utils.get(message.server.members, id=rank.user), rank.wordCount)
+                    # TODO: Pretty up the output!
+                    messageRankings += "{2}: {0}........{1}\n".format(discord.utils.get(message.server.members, id=rank.user), rank.wordCount, currentRank)
+                    currentRank += 1
+
+                em.add_field(name="Top {0} Word Count".format(len(messageUsageRank.rankings)), value=messageRankings, inline=False)
+
+            if len(em.fields) == 0:
+                em.description = "Nothing to see here yet."
+            em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
+            em.set_thumbnail(url=member.avatar_url)
+            return Response(em, reply=False, embed=True)
+
+
 
 # -----------
 # Owner-only commands
