@@ -746,7 +746,7 @@ class Abbot(discord.Client):
 
             # Get character count rankings
             messageRankings = ""
-            messageUsageRank.getRankingsByLongestMessage
+            messageUsageRank.getRankingsByLongestMessage()
             numRankings = len(messageUsageRank.rankings)
             if len(messageUsageRank.rankings) > 0:
                 currentRank = 1
@@ -762,8 +762,6 @@ class Abbot(discord.Client):
             em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
             em.set_thumbnail(url=member.avatar_url)
             return Response(em, reply=False, embed=True)
-
-
 
 # -----------
 # Owner-only commands
