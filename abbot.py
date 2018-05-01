@@ -24,7 +24,7 @@ from textwrap import dedent
 from constants import VERSION as BOTVERSION
 from constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 import praw
-from db import AbbotDatabase, MessageUsage, ReactionUsage, Idea, MessageUsageRank, ReactionUsageRank, MentionUsage
+from db import AbbotDatabase, MessageUsage, ReactionUsage, Idea, MessageUsageRank, ReactionUsageRank, MentionUsage, GenericRank
 
 import event
 
@@ -689,18 +689,19 @@ class Abbot(discord.Client):
                 title='{0} usage summary for {1.name}#{1.discriminator}'.format(target.upper(), member), colour=0x2e456b)
             if not messageUsage.newRecord: # If newRecord is true, then there is no reaction usage yet.
                 em.add_field(name="Message Summary", value="A summarized view of how chatty {0} is.".format(member.display_name), inline=False)
-                em.add_field(name='# Words', value=messageUsage.wordCount, inline=True)
-                em.add_field(name='# Characters', value=messageUsage.characterCount, inline=True)
+                em.add_field(name="# of Messages", value=messageUsage.messageCount, inline=True)
+                em.add_field(name='# of Words', value=messageUsage.wordCount, inline=True)
+                em.add_field(name='# of Characters', value=messageUsage.characterCount, inline=True)
                 em.add_field(name='Max Message', value=messageUsage.maxMessageLength, inline=True)
                 em.add_field(name='Last Message', value=messageUsage.lastMessageTimestamp, inline=False)
             
             if not reactionUsage.newRecord: # If newRecord is true, then there is no reaction usage yet.
                 em.add_field(name="Reaction Summary", value="A review of {0}'s messages reacted to and that have received reactions.".format(member.display_name), inline=False)
                 if reactionUsage.userReacted > 0:
-                    em.add_field(name="# Reactions", value=reactionUsage.userReacted, inline=True)
+                    em.add_field(name="# of Reactions", value=reactionUsage.userReacted, inline=True)
                     # em.add_field(name="# Message Reacted", value=reactionUsage.messagesReacted, inline=True)
                 if not reactionUsage.reactionsReceived > 0:
-                    em.add_field(name="# Reactions Received", value=reactionUsage.reactionsReceived, inline=True)
+                    em.add_field(name="# of Reactions Received", value=reactionUsage.reactionsReceived, inline=True)
                     # em.add_field(name="# Messages Receiving Actions", value=reactionUsage.messagesReacted, inline=True)
 
             if member.bot and message.author.id != self.config.owner_id: # Only owner can get bot usage.
@@ -722,6 +723,21 @@ class Abbot(discord.Client):
 
             # Get word count rankings
             rankingsOutput = ""
+            messageUsageRank.getRankingsByMessageCount()
+            numRankings = len(messageUsageRank.rankings)
+            p = inflect.engine()
+            if numRankings > 0:
+                currentRank = 1
+                for rank in messageUsageRank.rankings:
+                    # TODO: Pretty up the output!
+                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    currentRank += 1
+
+                em.add_field(name="Top {0} Message Count".format(len(messageUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
+
+            # Get word count rankings
+            rankingsOutput = ""
             messageUsageRank.getRankingsByWordCount()
             numRankings = len(messageUsageRank.rankings)
             p = inflect.engine()
@@ -730,7 +746,7 @@ class Abbot(discord.Client):
                 for rank in messageUsageRank.rankings:
                     # TODO: Pretty up the output!
                     rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                        rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
                 em.add_field(name="Top {0} Word Count".format(len(messageUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
@@ -744,24 +760,28 @@ class Abbot(discord.Client):
                 for rank in messageUsageRank.rankings:
                     # TODO: Pretty up the output!
                     rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                        rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
                 em.add_field(name="Top {0} Character Count".format(len(messageUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
 
             # Get character count rankings
             rankingsOutput = ""
-            messageUsageRank.getRankingsByLongestMessage
+            messageUsageRank.getRankingsByLongestMessage()
             numRankings = len(messageUsageRank.rankings)
             if len(messageUsageRank.rankings) > 0:
                 currentRank = 1
                 for rank in messageUsageRank.rankings:
                     # TODO: Pretty up the output!
                     rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                        rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
                 em.add_field(name="Top {0} Longest Message".format(len(messageUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
+
+            # --------------------------------------------------------------------------------------------------------------
+            # Mentions Rankings
+            # --------------------------------------------------------------------------------------------------------------
 
             # --------------------------------------------------------------------------------------------------------------
             # Reactions Rankings
@@ -778,7 +798,7 @@ class Abbot(discord.Client):
                 for rank in reactionUsageRank.rankings:
                     # TODO: Pretty up the output!
                     rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                        rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
                 em.add_field(name="Top {0} Reaction User".format(len(reactionUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
@@ -792,7 +812,7 @@ class Abbot(discord.Client):
                 for rank in reactionUsageRank.rankings:
                     # TODO: Pretty up the output!
                     rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                        rank.wordCount, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
                 em.add_field(name="Top {0} Reacted User".format(len(reactionUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
