@@ -684,6 +684,15 @@ class UsageRank(BaseUsage):
         self.maxRankings = maxRankings
         self.rankings = []
 
+class GenericRank:
+    """
+    This class represents a generic rank type.
+    """
+    def __init__(self, user, rankType, rankValue):
+        self.user = user
+        self.type = rankType
+        self.value = rankValue
+
 class MessageUsageRank(UsageRank):
     """
     This class is used to collect and report message usage rankings.
@@ -742,9 +751,8 @@ class MessageUsageRank(UsageRank):
                 cur = self.database.connection.cursor()
                 cur.execute(sql, values)
                 for row in cur:
-                    messageUsage = MessageUsage(self.database, row['user'], self.server, self.channel, False)
-                    messageUsage.wordCount = row[columnName]
-                    self.rankings.append(messageUsage)
+                    rank = GenericRank(row['user'], columnName, row[columnName])
+                    self.rankings.append(rank)
                 
                 cur.close()
                 return True
@@ -757,13 +765,28 @@ class MessageUsageRank(UsageRank):
             return False
 
     def getRankingsByWordCount(self):
+        """
+        Get the rankings by word count.
+        """
         self.getRankings('word_count')
 
     def getRankingsByCharacterCount(self):
+        """
+        Get the rankings by largest character count.
+        """
         self.getRankings('character_count')
 
     def getRankingsByLongestMessage(self):
+        """
+        Get the rankings by longest message.
+        """
         self.getRankings('max_message_length')
+
+    def getRankingsByMessageCount(self):
+        """
+        Get the rankings by message count.
+        """
+        self.getRankings('message_count')
 
 class ReactionUsageRank(UsageRank):
     """
@@ -823,9 +846,8 @@ class ReactionUsageRank(UsageRank):
                 cur = self.database.connection.cursor()
                 cur.execute(sql, values)
                 for row in cur:
-                    messageUsage = MessageUsage(self.database, row['user'], self.server, self.channel, False)
-                    messageUsage.wordCount = row[columnName]
-                    self.rankings.append(messageUsage)
+                    rank = GenericRank(row['user'], columnName, row[columnName])
+                    self.rankings.append(rank)
                 
                 cur.close()
                 return True
