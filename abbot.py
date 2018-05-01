@@ -909,6 +909,20 @@ class Abbot(discord.Client):
         
         return Response(":ok_hand: '{0} sent to all servers.".format(args), delete_after=20)
 
+    @owner_only
+    async def cmd_archivedb(self, message):
+        """
+        Archives the current database into archive tables.
+        Usage:
+            {command_prefix}archivedb
+        """
+        archived = self.database.archive()
+
+        if archived:
+            return Response(":ok_hand: Database has been archived.", reply=True, delete_after=20)
+        else:
+            return Response(":interrobang: Something went wrong with the database archiving.", reply=True, delete_after=20)
+
     async def try_add_reaction(self, message):
         """Check the message content.  If certain criteria are met, react with appropriate reaction."""
         emoji = None
