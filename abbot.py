@@ -1152,12 +1152,12 @@ class Abbot(discord.Client):
         userMentionUsage = db.MentionUsage(self.database, message.author.id, message.server.id, message.channel.id)
         if userMentionUsage.newRecord:
             userMentionUsage.userMentions = len(list(set(message.raw_mentions)))
-            userMentionUsage.channelMentions = len(list(set(message.raw_channel_mentions)))
+            userMentionUsage.channelsMentions = len(list(set(message.raw_channel_mentions)))
             userMentionUsage.roleMentions = len(list(set(message.raw_role_mentions)))
             userMentionUsage.insert()
         else:
             userMentionUsage.userMentions += len(list(set(message.raw_mentions)))
-            userMentionUsage.channelMentions += len(list(set(message.raw_channel_mentions)))
+            userMentionUsage.channelsMentions += len(list(set(message.raw_channel_mentions)))
             userMentionUsage.roleMentions += len(list(set(message.raw_role_mentions)))
             userMentionUsage.update()
 
