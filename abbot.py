@@ -24,7 +24,7 @@ from textwrap import dedent
 from constants import VERSION as BOTVERSION
 from constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 import praw
-from db import AbbotDatabase, MessageUsage, ReactionUsage, Idea, MessageUsageRank, ReactionUsageRank
+from db import AbbotDatabase, MessageUsage, ReactionUsage, Idea, MessageUsageRank, ReactionUsageRank, MentionUsage
 
 import event
 
@@ -1028,6 +1028,8 @@ class Abbot(discord.Client):
             messageUsage.maxMessageLength = charCount if charCount > messageUsage.maxMessageLength else messageUsage.maxMessageLength
             messageUsage.update()
 
+        await self.log_mention_usage(message)
+
     async def log_reaction_usage(self, reaction, user, add):
         """
         Log the reaction usage for the user reacting and the reacted user.
@@ -1060,7 +1062,42 @@ class Abbot(discord.Client):
             reactedUserUsage.update()
 
     async def log_command_usage(self, valid_command, message):
+        """
+        Log the command usage for the user.
+        """
         logger.debug("log_command_usage: TBD.")
+
+    async def log_mention_usage(self, message):
+        """
+        Log the mention usage for the user as well as the user(s), channel(s), and role(s) being mentioned.
+        Note that this does not log unique mentions, just how many times a user has mentioned something or has been mentioned.
+        """
+
+        # First log the mention usage for the author of the message.
+
+        # the raw_X_mentions arrays are not unique, so we can convert it to a set, then a list to make it a unique list.
+        userMentionUsage = MentionUsage(self.database, message.author.id, message.server.id, message.channel.id)
+        if userMentionUsage.newRecord:
+            userMentionUsage.userMentions = len(list(set(message.raw_mentions)))
+            userMentionUsage.channelsMentions = len(list(set(message.raw_channel_mentions)))
+            userMentionUsage.roleMentions = len(list(set(message.raw_role_mentions)))
+            userMentionUsage.insert()
+        else:
+            userMentionUsage.userMentions += len(list(set(message.raw_mentions)))
+            userMentionUsage.channelsMentions += len(list(set(message.raw_channel_mentions)))
+            userMentionUsage.roleMentions += len(list(set(message.raw_role_mentions)))
+            userMentionUsage.update()
+
+        # Now update the count for users mentioned.
+        for mentioned in list(set(message.raw_mentions)):
+            userMentioned = MentionUsage(self.database, mentioned, message.server.id, message.channel.id)
+            if userMentioned.newRecord:
+                userMentioned.userMentioned = 1
+                userMentioned.insert()
+            else:
+                userMentioned.userMentioned += 1
+                userMentioned.update()
+            userMentioned = None
 
 # -----------
 # Secret-Gifter Event Commands
