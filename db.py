@@ -504,6 +504,167 @@ class ReactionUsage(BaseUsage):
             logger.error("There was a problem updating the usage_reactions record: {0}".format(ex))
             return False
 
+class MentionUsage(BaseUsage):
+    """
+    This class represents a usage_mentions record and can insert or update records.
+    """
+    def __init__(self, database, user, server, channel, fetch=True):
+        """
+        Create a model for the mention usage.
+        """
+        BaseUsage.__init__(self, database, user, server, channel)
+        self.userMentions = 0
+        self.userMentioned = 0
+        self.channelsMentions = 0
+        self.roleMentions = 0
+
+        if fetch:
+            self.get(user, server, channel)
+
+    def get(self, user, server, channel):
+        """
+        Get the mention usage information for the specific user/server/channel.
+        At least one of user, server, or channel must be supplied.
+        """
+        sql = """select user, 
+            sum(user_mentions) as user_mentions, 
+            sum(user_mentioned) as user_mentioned, 
+            sum(channel_mentions) as channel_mentions,
+            sum(role_mentions) as role_mentions
+            from usage_mentions """
+        if server == None and user == None and channel == None:
+            logger.error("Must supply at least user, server, or channel.")
+            return False
+        else:
+            # Build the where clause
+            sql += "where "
+            values = ()
+
+            if user != None:
+                sql += "user = ? "
+                values += (user,)
+
+            if server != None:
+                sql += " and " if len(values) > 0 else ""
+                sql += "server = ? "
+                values += (server,)
+
+            if channel != None:
+                sql += " and " if len(values) > 0 else ""
+                sql += "channel = ? "
+                values += (channel,)
+
+        # Add in the group by
+        sql += "group by user "
+
+        if self.database != None:
+            try:
+                # Check that we have all the necessary data first.
+                if self.database.connection == None:
+                    self.database.connect()
+
+                self.database.connection.row_factory = sqlite3.Row
+                cur = self.database.connection.cursor()
+                cur.execute(sql, values)
+                row = cur.fetchone() # There "should" only be one record!
+                if row != None:
+                    self.userMentions = row['user_mentions']
+                    self.userMentioned = row['user_mentioned']
+                    self.channelsMentions = row['channel_mentions']
+                    self.roleMentions = row['role_mentions']
+                    self.newRecord = False
+                else:
+                    self.newRecord = True
+
+                cur.close()
+                return True
+
+            except Exception as ex:
+                logger.error("Problem getting mention usage: {0}".format(ex))
+                return False
+        else:
+            logger.error("No valid DB connection available.")
+            return False
+
+    def insert(self):
+        """
+        Insert a mention usage record.  If the object does not have a user, server,
+        and channel set the insert cannot be done.
+        """
+        insertSQL = """
+            insert into usage_mentions (
+                user, 
+                server, 
+                channel, 
+                user_mentions, 
+                user_mentioned, 
+                channel_mentions, 
+                role_mentions
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)"""
+        values = ()
+
+        # Check that we have all the necessary data first.
+        if self.database.connection == None:
+            self.database.connect()
+
+        if self.server == None and self.user == None and self.channel == None:
+            logger.error("Must supply the user, server, and channel.")
+            return False
+        else:
+            values = (self.user, self.server, self.channel, self.userMentions, self.userMentioned, self.channelsMentions, self.roleMentions)
+
+        try:
+            cur = self.database.connection.cursor()
+            cur.execute(insertSQL, values)
+
+            # Save (commit) the changes
+            self.database.connection.commit()
+            cur.close()
+            return True
+
+        except BaseException as ex:
+            logger.error("There was a problem inserting the usage_messages record: {0}".format(ex))
+            return False
+
+    def update(self):
+        """
+        Update a mention usage record.  If the object does not have a user, server,
+        and channel set the update cannot be done.
+        """
+        updateSQL = """update usage_mentions
+            set user_mentions = ?, 
+                user_mentioned = ?, 
+                channel_mentions = ?, 
+                role_mentions = ? 
+            where user = ? and 
+            server = ? and 
+            channel = ?"""
+        values = ()
+
+        # Check that we have all the necessary data first.
+        if self.database.connection == None:
+            self.database.connect()
+
+        if self.server == None and self.user == None and self.channel == None:
+            logger.error("Must supply the user, server, and channel.")
+            return False
+        else:
+            values = (self.userMentions, self.userMentioned, self.channelsMentions, self.roleMentions, self.user, self.server, self.channel)
+
+        try:
+            # self.database.connect()
+            cur = self.database.connection.cursor()
+            cur.execute(updateSQL, values)
+
+            # Save (commit) the changes
+            self.database.connection.commit()
+            cur.close()
+            return True
+
+        except BaseException as ex:
+            logger.error("There was a problem updating the usage_mentions record: {0}".format(ex))
+            return False
+
 class UsageRank(BaseUsage):
     """
     This is the base class used to collect and report usage rankings.
