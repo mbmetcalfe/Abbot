@@ -125,4 +125,6 @@ CREATE TABLE `usage_reactions_archive` (
 	`month` INTEGER NOT NULL,
 	PRIMARY KEY(`user`,`server`,`channel`)
 );
+
+pragma user_version = 1
 COMMIT;
