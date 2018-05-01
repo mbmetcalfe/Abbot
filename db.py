@@ -6,7 +6,7 @@ logger = logging.getLogger('abbot')
 from pathlib import Path
 
 DATABASE_DDL = 'config/abbot.sqlite3.sql'
-ARCHIVE_SQL = 'config/archive_db.sql'
+ARCHIVE_SQL = 'sql/archive_db.sql'
 
 class AbbotDatabase:
     """
