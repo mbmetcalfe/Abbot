@@ -520,7 +520,7 @@ class MentionUsage(BaseUsage):
         BaseUsage.__init__(self, database, user, server, channel)
         self.userMentions = 0
         self.userMentioned = 0
-        self.channelsMentions = 0
+        self.channelMentions = 0
         self.roleMentions = 0
 
         if fetch:
@@ -575,7 +575,7 @@ class MentionUsage(BaseUsage):
                 if row != None:
                     self.userMentions = row['user_mentions']
                     self.userMentioned = row['user_mentioned']
-                    self.channelsMentions = row['channel_mentions']
+                    self.channelMentions = row['channel_mentions']
                     self.roleMentions = row['role_mentions']
                     self.newRecord = False
                 else:
@@ -616,7 +616,7 @@ class MentionUsage(BaseUsage):
             logger.error("Must supply the user, server, and channel.")
             return False
         else:
-            values = (self.user, self.server, self.channel, self.userMentions, self.userMentioned, self.channelsMentions, self.roleMentions)
+            values = (self.user, self.server, self.channel, self.userMentions, self.userMentioned, self.channelMentions, self.roleMentions)
 
         try:
             cur = self.database.connection.cursor()
@@ -654,7 +654,7 @@ class MentionUsage(BaseUsage):
             logger.error("Must supply the user, server, and channel.")
             return False
         else:
-            values = (self.userMentions, self.userMentioned, self.channelsMentions, self.roleMentions, self.user, self.server, self.channel)
+            values = (self.userMentions, self.userMentioned, self.channelMentions, self.roleMentions, self.user, self.server, self.channel)
 
         try:
             # self.database.connect()
@@ -882,3 +882,97 @@ class ReactionUsageRank(UsageRank):
         Get the top users that have the most reactions to their messages.
         """
         self.getRankings('reactions_received_count')
+
+class MentionUsageRank(UsageRank):
+    """
+    This class is used to collect and report mention usage rankings.
+    """
+    def __init__(self, database, server, channel, maxRankings=5):
+        """
+        Initialize the mention rank usage class.
+        """
+        UsageRank.__init__(self, database, server, channel, maxRankings)
+        self.rankings = []
+
+    def getRankings(self, columnName):
+        """
+        Get the ranking information for the specific user/server/channel for the identified column.
+        At least one of user, server, or channel must be supplied.
+        Possible values for columnName: messages_reacted_count, user_reacted_count, message_reactions_received_count, reactions_received_count
+        """
+        self.rankings.clear()
+        sql = """select user, 
+            sum({column_name}) as {column_name} 
+            from usage_mentions """.format(column_name=columnName)
+        if self.server == None and self.channel == None:
+            logger.error("Must supply at least server, or channel.")
+            return False
+        else:
+            # Build the where clause
+            sql += "where "
+            values = ()
+
+            if self.server != None:
+                sql += "server = ? "
+                values += (self.server,)
+
+            if self.channel != None:
+                sql += " and " if len(values) > 0 else ""
+                sql += "channel = ? "
+                values += (self.channel,)
+
+        # Add in the group by
+        sql += "group by user "
+
+        # Add in the order by
+        sql += "order by {column_name} desc, user asc ".format(column_name=columnName)
+        # Add the limit
+        sql += "limit ?"
+        values += (self.maxRankings,)
+
+        if self.database != None:
+            try:
+                # Check that we have all the necessary data first.
+                if self.database.connection == None:
+                    self.database.connect()
+
+                self.database.connection.row_factory = sqlite3.Row
+                cur = self.database.connection.cursor()
+                cur.execute(sql, values)
+                for row in cur:
+                    rank = GenericRank(row['user'], columnName, row[columnName])
+                    self.rankings.append(rank)
+                
+                cur.close()
+                return True
+
+            except Exception as ex:
+                logger.error("Problem getting message usage: {0}".format(ex))
+                return False
+        else:
+            logger.error("No valid DB connection available.")
+            return False
+
+    def getRankingsByUserMentions(self):
+        """
+        Get users that have mentioned the most people.
+        """
+        self.getRankings('user_mentions')
+
+    def getRankingsByUserMentioned(self):
+        """
+        Get users that have been mentioned the most.
+        """
+        self.getRankings('user_mentioned')
+
+    def getRankingsByChannelMentions(self):
+        """
+        Get users that have mentioned the most channels.
+        """
+        self.getRankings('channel_mentions')
+
+    def getRankingsByRoleMentions(self):
+        """
+        Get users that have mentioned the most roles.
+        """
+        self.getRankings('role_mentions')

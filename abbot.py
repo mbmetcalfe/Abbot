@@ -24,7 +24,7 @@ from textwrap import dedent
 from constants import VERSION as BOTVERSION
 from constants import DISCORD_MSG_CHAR_LIMIT, AUDIO_CACHE_PATH
 import praw
-from db import AbbotDatabase, MessageUsage, ReactionUsage, Idea, MessageUsageRank, ReactionUsageRank, MentionUsage, GenericRank
+import db
 
 import event
 
@@ -55,7 +55,7 @@ class Abbot(discord.Client):
             self.loop.create_task(self._auto_presence_task())
         
         if self.config.database_name:
-            self.database = AbbotDatabase(self.config.database_name)
+            self.database = db.AbbotDatabase(self.config.database_name)
 
     # TODO: Add some sort of `denied` argument for a message to send when someone else tries to use it
     def owner_only(func):
@@ -497,7 +497,7 @@ class Abbot(discord.Client):
         """
         text = " ".join(leftover_args)
         
-        idea = Idea(self.database, message.author.id, message.server.id, message.channel.id, text)
+        idea = db.Idea(self.database, message.author.id, message.server.id, message.channel.id, text)
         success = idea.insert()
         
         if success:
@@ -682,9 +682,9 @@ class Abbot(discord.Client):
                 logger.debug("Unsupported usage argument '{0}'".format(arg))
 
         if not rank:
-            messageUsage = MessageUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id)
-            reactionUsage = ReactionUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id)
-            mentionUsage = MentionUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id)
+            messageUsage = db.MessageUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id)
+            reactionUsage = db.ReactionUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id)
+            mentionUsage = db.MentionUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id)
 
             em = discord.Embed(
                 title='{0} usage summary for {1.name}#{1.discriminator}'.format(target.upper(), member), colour=0x2e456b)
@@ -708,14 +708,14 @@ class Abbot(discord.Client):
                         # em.add_field(name="# Messages Receiving Actions", value=reactionUsage.messagesReacted, inline=True)
 
             if not mentionUsage.newRecord: # If newRecord is true, then there is not reaction usage.
-                if mentionUsage.userMentioned > 0 or mentionUsage.userMentions > 0 or mentionUsage.channelsMentions > 0 or mentionUsage.roleMentions > 0:
+                if mentionUsage.userMentioned > 0 or mentionUsage.userMentions > 0 or mentionUsage.channelMentions > 0 or mentionUsage.roleMentions > 0:
                     em.add_field(name="Mention Summary", value="A review of {0}'s mentions.".format(member.display_name), inline=False)
                     if mentionUsage.userMentioned > 0:
                         em.add_field(name="# of Times Mentioned", value=mentionUsage.userMentioned, inline=True)
                     if mentionUsage.userMentions > 0:
                         em.add_field(name="# of Users Mentioned", value=mentionUsage.userMentions, inline=True)
-                    if mentionUsage.channelsMentions > 0:
-                        em.add_field(name="# of Channels Mentioned", value=mentionUsage.channelsMentions, inline=True)
+                    if mentionUsage.channelMentions > 0:
+                        em.add_field(name="# of Channels Mentioned", value=mentionUsage.channelMentions, inline=True)
                     if mentionUsage.roleMentions > 0:
                         em.add_field(name="# of Roles Mentioned", value=mentionUsage.roleMentions, inline=True)
 
@@ -734,9 +734,9 @@ class Abbot(discord.Client):
             # --------------------------------------------------------------------------------------------------------------
             # Message Rankings
             # --------------------------------------------------------------------------------------------------------------
-            messageUsageRank = MessageUsageRank(database=self.database, server=message.server.id, channel=None if queryServer else message.channel.id, maxRankings=5)
+            messageUsageRank = db.MessageUsageRank(database=self.database, server=message.server.id, channel=None if queryServer else message.channel.id, maxRankings=5)
 
-            # Get word count rankings
+            # Get message count rankings
             rankingsOutput = ""
             messageUsageRank.getRankingsByMessageCount()
             numRankings = len(messageUsageRank.rankings)
@@ -749,7 +749,7 @@ class Abbot(discord.Client):
                         rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
-                em.add_field(name="Top {0} Message Count".format(len(messageUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
+                em.add_field(name="Most Messages", value=rankingsOutput + "\n", inline=True)
 
             # Get word count rankings
             rankingsOutput = ""
@@ -764,7 +764,7 @@ class Abbot(discord.Client):
                         rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
-                em.add_field(name="Top {0} Word Count".format(len(messageUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
+                em.add_field(name="Most Words", value=rankingsOutput + "\n", inline=True)
 
             # Get character count rankings
             rankingsOutput = ""
@@ -778,7 +778,7 @@ class Abbot(discord.Client):
                         rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
-                em.add_field(name="Top {0} Character Count".format(len(messageUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
+                em.add_field(name="Most Characters", value=rankingsOutput + "\n", inline=True)
 
             # Get character count rankings
             rankingsOutput = ""
@@ -792,16 +792,48 @@ class Abbot(discord.Client):
                         rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
-                em.add_field(name="Top {0} Longest Message".format(len(messageUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
+                em.add_field(name="Longest Message", value=rankingsOutput + "\n", inline=True)
 
             # --------------------------------------------------------------------------------------------------------------
             # Mentions Rankings
             # --------------------------------------------------------------------------------------------------------------
+            mentionUsageRank = db.MentionUsageRank(database=self.database, server=message.server.id, channel=None if queryServer else message.channel.id, maxRankings=5)
+
+            # Get most mentioned user/role/channel
+            rankingsOutput = ""
+            mentionUsageRank.getRankingsByUserMentioned()
+            numRankings = len(mentionUsageRank.rankings)
+            p = inflect.engine()
+            if numRankings > 0:
+                currentRank = 1
+                for rank in mentionUsageRank.rankings:
+                    # TODO: Pretty up the output!
+                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    currentRank += 1
+
+                em.add_field(name="Most Mentioned Users", value=rankingsOutput + "\n", inline=True)
+
+            rankingsOutput = ""
+            mentionUsageRank.getRankingsByUserMentions()
+            numRankings = len(mentionUsageRank.rankings)
+            p = inflect.engine()
+            if numRankings > 0:
+                currentRank = 0
+                for rank in mentionUsageRank.rankings:
+                    # TODO: Pretty up the output!
+                    if rank.value > 0:
+                        currentRank += 1
+                        rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                            rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+
+                if currentRank > 0:
+                    em.add_field(name="Most User Mentions", value=rankingsOutput + "\n", inline=True)
 
             # --------------------------------------------------------------------------------------------------------------
             # Reactions Rankings
             # --------------------------------------------------------------------------------------------------------------
-            reactionUsageRank = ReactionUsageRank(database=self.database, server=message.server.id, channel=None if queryServer else message.channel.id, maxRankings=5)
+            reactionUsageRank = db.ReactionUsageRank(database=self.database, server=message.server.id, channel=None if queryServer else message.channel.id, maxRankings=5)
 
             # Get user reacted rankings
             rankingsOutput = ""
@@ -809,28 +841,32 @@ class Abbot(discord.Client):
             numRankings = len(reactionUsageRank.rankings)
             p = inflect.engine()
             if numRankings > 0:
-                currentRank = 1
+                currentRank = 0
                 for rank in reactionUsageRank.rankings:
                     # TODO: Pretty up the output!
-                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
-                    currentRank += 1
+                    if rank.value > 0:
+                        currentRank += 1
+                        rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                            rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
 
-                em.add_field(name="Top {0} Reaction User".format(len(reactionUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
+                if currentRank > 0:
+                    em.add_field(name="Reacted Most", value=rankingsOutput + "\n", inline=True)
 
             # Get user reactions rankings
             rankingsOutput = ""
             reactionUsageRank.getRankingsByUserReactionsReceived()
             numRankings = len(reactionUsageRank.rankings)
             if len(reactionUsageRank.rankings) > 0:
-                currentRank = 1
+                currentRank = 0
                 for rank in reactionUsageRank.rankings:
                     # TODO: Pretty up the output!
-                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
-                    currentRank += 1
+                    if rank.value > 0:
+                        currentRank += 1
+                        rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                            rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
 
-                em.add_field(name="Top {0} Reacted User".format(len(reactionUsageRank.rankings)), value=rankingsOutput + "\n", inline=True)
+                if currentRank > 0:
+                    em.add_field(name="Most Reacted User", value=rankingsOutput + "\n", inline=True)
 
             # --------------------------------------------------------------------------------------------------------------
             # Wrap it up.
@@ -842,10 +878,10 @@ class Abbot(discord.Client):
             return Response(em, reply=False, embed=True)
 
 
-# -----------
+# --------------------------------------------------------------------------------------------------------------
 # Owner-only commands
 # cmd_clean can be taken out of own_only when sanity checked to not break.
-# -----------
+# --------------------------------------------------------------------------------------------------------------
     @owner_only
     async def cmd_clean(self, message, channel, server, author, search_range=50):
         """
@@ -1048,7 +1084,7 @@ class Abbot(discord.Client):
             return
 
         content = message.content
-        messageUsage = MessageUsage(self.database, message.author.id, message.server.id, message.channel.id)
+        messageUsage = db.MessageUsage(self.database, message.author.id, message.server.id, message.channel.id)
         if messageUsage.lastMessageTimestamp == None:
             messageUsage.wordCount = len(content.split())
             messageUsage.characterCount = len(content)
@@ -1077,7 +1113,7 @@ class Abbot(discord.Client):
         add      -- If the reaction is being added or removed.
         """
         # First log the user that is reacting.
-        reactingUserUsage = ReactionUsage(self.database, user.id, reaction.message.server.id, reaction.message.channel.id)
+        reactingUserUsage = db.ReactionUsage(self.database, user.id, reaction.message.server.id, reaction.message.channel.id)
         if reactingUserUsage.newRecord and add: # Nothing recorded yet.
             reactingUserUsage.messagesReacted = 1
             reactingUserUsage.userReacted = 1
@@ -1088,7 +1124,7 @@ class Abbot(discord.Client):
             reactingUserUsage.update()
 
         # Then log the user that is being reacted to.
-        reactedUserUsage = ReactionUsage(self.database, reaction.message.author.id, reaction.message.server.id, reaction.message.channel.id)
+        reactedUserUsage = db.ReactionUsage(self.database, reaction.message.author.id, reaction.message.server.id, reaction.message.channel.id)
         if reactedUserUsage.newRecord and add: # Nothing recorded yet.
             reactedUserUsage.messageReactionsReceived = 1
             reactedUserUsage.reactionsReceived = 1
@@ -1113,7 +1149,7 @@ class Abbot(discord.Client):
         # First log the mention usage for the author of the message.
 
         # the raw_X_mentions arrays are not unique, so we can convert it to a set, then a list to make it a unique list.
-        userMentionUsage = MentionUsage(self.database, message.author.id, message.server.id, message.channel.id)
+        userMentionUsage = db.MentionUsage(self.database, message.author.id, message.server.id, message.channel.id)
         if userMentionUsage.newRecord:
             userMentionUsage.userMentions = len(list(set(message.raw_mentions)))
             userMentionUsage.channelsMentions = len(list(set(message.raw_channel_mentions)))
@@ -1127,7 +1163,7 @@ class Abbot(discord.Client):
 
         # Now update the count for users mentioned.
         for mentioned in list(set(message.raw_mentions)):
-            userMentioned = MentionUsage(self.database, mentioned, message.server.id, message.channel.id)
+            userMentioned = db.MentionUsage(self.database, mentioned, message.server.id, message.channel.id)
             if userMentioned.newRecord:
                 userMentioned.userMentioned = 1
                 userMentioned.insert()
