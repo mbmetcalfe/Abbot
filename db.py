@@ -6,6 +6,7 @@ logger = logging.getLogger('abbot')
 from pathlib import Path
 
 DATABASE_DDL = 'config/abbot.sqlite3.sql'
+ARCHIVE_SQL = 'config/archive_db.sql'
 
 class AbbotDatabase:
     """
@@ -62,6 +63,29 @@ class AbbotDatabase:
         # TODO: Do a connection test/query to ensure database is correct.
         self.connect()
         self.close()
+
+    def archive(self):
+        """
+        Archive the current data into the archive tables.
+        """
+        result = True
+        try:
+            logger.debug("Trying to archive the database: {0}".format(self.databaseName))
+            sql = open(ARCHIVE_SQL, 'r').read()
+            self.connection = sqlite3.connect(self.databaseName)
+            cur = self.connection.cursor()
+            cur.executescript(sql)
+
+            logger.debug("Database {0} archived.".format(self.databaseName))
+            result = True
+
+        except Exception as ex:
+            self.connection = None
+            logger.error("Problem executing SQL: {0}".format(ex))
+            result = False
+        finally:
+            cur.close()
+            return result
 
     def connect(self):
         """
