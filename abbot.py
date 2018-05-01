@@ -969,7 +969,6 @@ class Abbot(discord.Client):
             return
 
         content = message.content
-        logger.debug("{0.name}#{0.discriminator} ({0.id}): Non-command use: {1}".format(message.author, message.content))
         messageUsage = MessageUsage(self.database, message.author.id, message.server.id, message.channel.id)
         if messageUsage.lastMessageTimestamp == None:
             messageUsage.wordCount = len(content.split())
@@ -1160,8 +1159,8 @@ class Abbot(discord.Client):
             logger.info("[User blacklisted] {0.id}/{0.name} ({1})".format(message.author, message_content))
             return
 
-        else:
-            logger.info("[Command] {0.id}/{0.name} ({1})".format(message.author, message_content))
+        # else:
+        #     logger.info("[Command] {0.id}/{0.name} ({1})".format(message.author, message_content))
 
         user_permissions = self.permissions.for_user(message.author)
 
