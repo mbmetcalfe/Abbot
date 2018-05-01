@@ -1018,6 +1018,7 @@ class Abbot(discord.Client):
             messageUsage.wordCount = len(content.split())
             messageUsage.characterCount = len(content)
             messageUsage.maxMessageLength = messageUsage.characterCount
+            messageUsage.messageCount = 1
             
             messageUsage.insert()
         else:
@@ -1026,6 +1027,7 @@ class Abbot(discord.Client):
             messageUsage.wordCount += contentSize
             messageUsage.characterCount += charCount
             messageUsage.maxMessageLength = charCount if charCount > messageUsage.maxMessageLength else messageUsage.maxMessageLength
+            messageUsage.messageCount += 1
             messageUsage.update()
 
         await self.log_mention_usage(message)

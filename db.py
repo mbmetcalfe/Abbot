@@ -186,6 +186,7 @@ class MessageUsage(BaseUsage):
         self.wordCount = 0
         self.characterCount = 0
         self.maxMessageLength = 0
+        self.messageCount = 0
         self.lastMessageTimestamp = None
 
         if fetch:
@@ -197,6 +198,7 @@ class MessageUsage(BaseUsage):
         At least one of user, server, or channel must be supplied.
         """
         sql = """select user, 
+            sum(message_count) as message_count, 
             sum(word_count) as word_count, 
             sum(character_count) as character_count, 
             sum(max_message_length) as max_message_length, 
@@ -229,7 +231,7 @@ class MessageUsage(BaseUsage):
 
         # TODO: Add ability to state which ranking user wants.
         # Add in the order by
-        sql += "order by 3 desc, 4 desc" # 3 is the character count, 4 is the max message length
+        sql += "order by character_count desc, max_message_length desc" 
         if self.database != None:
             try:
                 # Check that we have all the necessary data first.
@@ -241,6 +243,7 @@ class MessageUsage(BaseUsage):
                 cur.execute(sql, values)
                 row = cur.fetchone() # There "should" only be one record!
                 if row != None:
+                    self.messageCount = row['message_count']
                     self.wordCount = row['word_count']
                     self.characterCount = row['character_count']
                     self.maxMessageLength = row['max_message_length']
@@ -272,8 +275,9 @@ class MessageUsage(BaseUsage):
                 word_count, 
                 character_count, 
                 max_message_length, 
-                last_message_timestamp
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)"""
+                last_message_timestamp,
+                message_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"""
         values = ()
 
         # Check that we have all the necessary data first.
@@ -285,7 +289,7 @@ class MessageUsage(BaseUsage):
             return False
         else:
             ts = datetime.datetime.now()
-            values = (self.user, self.server, self.channel, self.wordCount, self.characterCount, self.maxMessageLength, ts.strftime("%Y-%m-%d %H:%M:%S:%f"))
+            values = (self.user, self.server, self.channel, self.wordCount, self.characterCount, self.maxMessageLength, ts.strftime("%Y-%m-%d %H:%M:%S:%f"), self.messageCount)
 
         try:
             cur = self.database.connection.cursor()
@@ -309,7 +313,8 @@ class MessageUsage(BaseUsage):
             set word_count = ?, 
                 character_count = ?, 
                 max_message_length = ?, 
-                last_message_timestamp = ? 
+                last_message_timestamp = ?, 
+                message_count = ? 
             where user = ? and 
             server = ? and 
             channel = ?"""
@@ -324,7 +329,7 @@ class MessageUsage(BaseUsage):
             return False
         else:
             ts = datetime.datetime.now()
-            values = (self.wordCount, self.characterCount, self.maxMessageLength, ts.strftime("%Y-%m-%d %H:%M:%S:%f"), self.user, self.server, self.channel)
+            values = (self.wordCount, self.characterCount, self.maxMessageLength, ts.strftime("%Y-%m-%d %H:%M:%S:%f"), self.messageCount, self.user, self.server, self.channel)
 
         try:
             # self.database.connect()
