@@ -1056,7 +1056,7 @@ class Abbot(discord.Client):
             emoji = '💩'
             await self.safe_add_reaction(message, emoji)
         if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["haha", "lol"]):
-            emoji = random.choice(['😀', '😃', '😄', '😁', '😆', '😅', '😂', '😺', '😸'])
+            emoji = random.choice(['😀', '😃', '😄', '😁', '😆', '😂', '😺', '😸'])
             await self.safe_add_reaction(message, emoji)
         if "rofl" == message.content.lower():
             emoji = '🤣'
