@@ -670,6 +670,158 @@ class MentionUsage(BaseUsage):
             logger.error("There was a problem updating the usage_mentions record: {0}".format(ex))
             return False
 
+class CommandUsage(BaseUsage):
+    """
+    This class represents a usage_commands record and can insert or update records.
+    """
+    def __init__(self, database, user, server, channel, commandName, valid, fetch=True):
+        """
+        Create a model for the command usage.
+        """
+        BaseUsage.__init__(self, database, user, server, channel)
+        self.commandName = commandName
+        self.valid = valid
+        self.count = 0
+
+        if fetch:
+            self.get()
+
+    def get(self):
+        """
+        Get the command usage information for the specific user/server/channel.
+        At least one of user, server, or channel must be supplied.
+        """
+        sql = """select user, 
+            command_name, 
+            sum(count) as count,
+            from usage_commands """
+        if self.server == None and self.user == None and self.channel == None:
+            logger.error("Must supply at least user, server, or channel.")
+            return False
+        else:
+            # Build the where clause
+            sql += "where valid = ? "
+            values = (1 if self.valid else 0,)
+
+            if self.user != None:
+                sql += " and user = ? "
+                values += (self.user,)
+
+            if self.server != None:
+                # sql += " and " if len(values) > 0 else ""
+                sql += " and server = ? "
+                values += (self.server,)
+
+            if self.channel != None:
+                # sql += " and " if len(values) > 0 else ""
+                sql += " and channel = ? "
+                values += (self.channel,)
+
+        # Add in the group by
+        sql += "group by user, command_name "
+
+        if self.database != None:
+            try:
+                # Check that we have all the necessary data first.
+                if self.database.connection == None:
+                    self.database.connect()
+
+                self.database.connection.row_factory = sqlite3.Row
+                cur = self.database.connection.cursor()
+                cur.execute(sql, values)
+                row = cur.fetchone() # There "should" only be one record!
+                if row != None:
+                    self.count = row['count']
+                    self.newRecord = False
+                else:
+                    self.count = 1
+                    self.newRecord = True
+
+                cur.close()
+                return True
+
+            except Exception as ex:
+                logger.error("Problem getting command usage: {0}".format(ex))
+                return False
+        else:
+            logger.error("No valid DB connection available.")
+            return False
+
+    def insert(self):
+        """
+        Insert a command usage record.  If the object does not have a user, server,
+        and channel set the insert cannot be done.
+        """
+        insertSQL = """
+            insert into usage_commands (
+                user, 
+                server, 
+                channel, 
+                command_name, 
+                valid, 
+                count 
+                ) VALUES (?, ?, ?, ?, ?, ?)"""
+        values = ()
+
+        # Check that we have all the necessary data first.
+        if self.database.connection == None:
+            self.database.connect()
+
+        if self.server == None and self.user == None and self.channel == None:
+            logger.error("Must supply the user, server, and channel.")
+            return False
+        else:
+            values = (self.user, self.server, self.channel, self.commandName, self.valid, self.count)
+
+        try:
+            cur = self.database.connection.cursor()
+            cur.execute(insertSQL, values)
+
+            # Save (commit) the changes
+            self.database.connection.commit()
+            cur.close()
+            return True
+
+        except BaseException as ex:
+            logger.error("There was a problem inserting the usage_messages record: {0}".format(ex))
+            return False
+
+    def update(self):
+        """
+        Update a command usage record.  If the object does not have a user, server,
+        and channel set the update cannot be done.
+        """
+        updateSQL = """update usage_commands
+            set count = ?, 
+            where user = ? and 
+                server = ? and 
+                channel = ? and 
+                command_name = ? and
+                valid = ?"""
+        values = (self.count, self.user, self.server, self.channel, self.commandName, self.valid)
+
+        # Check that we have all the necessary data first.
+        if self.database.connection == None:
+            self.database.connect()
+
+        if self.server == None and self.user == None and self.channel == None:
+            logger.error("Must supply the user, server, and channel.")
+            return False
+
+        try:
+            # self.database.connect()
+            cur = self.database.connection.cursor()
+            cur.execute(updateSQL, values)
+
+            # Save (commit) the changes
+            self.database.connection.commit()
+            cur.close()
+            return True
+
+        except BaseException as ex:
+            logger.error("There was a problem updating the usage_mentions record: {0}".format(ex))
+            return False
+
 class UsageRank(BaseUsage):
     """
     This is the base class used to collect and report usage rankings.
@@ -976,3 +1128,4 @@ class MentionUsageRank(UsageRank):
         Get users that have mentioned the most roles.
         """
         self.getRankings('role_mentions')
+

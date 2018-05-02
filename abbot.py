@@ -1134,18 +1134,22 @@ class Abbot(discord.Client):
             reactedUserUsage.reactionsReceived += 1 if add else -1
             reactedUserUsage.update()
 
-    async def log_command_usage(self, valid_command, message):
+    async def log_command_usage(self, command, validCommand, message):
         """
         Log the command usage for the user.
         """
-        logger.debug("log_command_usage: TBD.")
+        commandUsage = db.CommandUsage(self.database, message.author.id, message.server.id, message.channel.id, command, validCommand)
+        # if commandUsage.newRecord:
+        #     commandUsage.insert()
+        # else:
+        #     commandUsage.count += 1
+        #     commandUsage.update()
 
     async def log_mention_usage(self, message):
         """
         Log the mention usage for the user as well as the user(s), channel(s), and role(s) being mentioned.
         Note that this does not log unique mentions, just how many times a user has mentioned something or has been mentioned.
         """
-
         # First log the mention usage for the author of the message.
 
         # the raw_X_mentions arrays are not unique, so we can convert it to a set, then a list to make it a unique list.
@@ -1299,10 +1303,10 @@ class Abbot(discord.Client):
 
         handler = getattr(self, 'cmd_%s' % command, None)
         if not handler:
-            await self.log_command_usage(False, message)
+            await self.log_command_usage(command, False, message)
             return
         else:
-            await self.log_command_usage(True, message)
+            await self.log_command_usage(command, True, message)
 
         if message.channel.is_private:
             if not (message.author.id == self.config.owner_id and (command in pmCommandList)):
