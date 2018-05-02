@@ -1,8 +1,8 @@
-import sqlite3
 import datetime
 import logging
 logger = logging.getLogger('abbot')
-
+import os
+import sqlite3
 from pathlib import Path
 
 DATABASE_DDL = 'config/abbot.sqlite3.sql'
@@ -62,7 +62,21 @@ class AbbotDatabase:
         
         self.connect()
         self.databaseVersion = self.getVersion()
-        logger.debug("Database version {0}.".format(self.databaseVersion))
+        logger.info("Database version {0}.".format(self.databaseVersion))
+
+        # See if there are updates.
+        updates = []
+        with os.scandir(DATABASE_UPDATE_FOLDER) as it:
+            for entry in it:
+                if entry.is_dir():
+                    if int(entry.name) > self.databaseVersion:
+                        updates.append(int(entry.name))
+        updates.sort()
+        
+        if len(updates) > 0:
+            logger.info("{0} updates available.".format(len(updates)))
+            for update in updates:
+                self.performUpdate(update)
 
         self.close()
 
@@ -138,6 +152,31 @@ class AbbotDatabase:
             logger.error("Problem getting database version: {0}".format(ex))
         finally:
             return version
+
+    def performUpdate(self, updateNumber):
+        updateListFileName = "{0}/{1}/update{1}.txt".format(DATABASE_UPDATE_FOLDER, updateNumber)
+        try:
+            logger.debug("Trying to apply update {0}".format(updateNumber))
+            updateListFile = open(updateListFileName, 'r')
+            updateFiles = updateListFile.readlines()
+            updateListFile.close()
+
+            self.connect()
+            cur = self.connection.cursor()
+            for fileName in updateFiles:
+                updateFileName = "{0}/{1}/{2}".format(DATABASE_UPDATE_FOLDER, updateNumber, fileName[:-1] if fileName[-1] == '\n' else fileName)
+                logger.debug("Applying update: {0}".format(updateFileName))
+
+                updateFile = open(updateFileName, 'r').read()
+                cur.executescript(updateFile)
+
+            logger.debug("Update {0} complete.".format(updateNumber))
+
+        except Exception as ex:
+            logger.error("Problem executing update: {0}".format(ex))
+        finally:
+            cur.close()
+            self.connection.close()
 
 class Idea:
     """
