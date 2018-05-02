@@ -812,7 +812,8 @@ class Abbot(discord.Client):
                         rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
                     currentRank += 1
 
-                em.add_field(name="Most Mentioned Users", value=rankingsOutput + "\n", inline=True)
+                if currentRank > 0:
+                    em.add_field(name="Most Mentioned Users", value=rankingsOutput + "\n", inline=True)
 
             rankingsOutput = ""
             mentionUsageRank.getRankingsByUserMentions()
