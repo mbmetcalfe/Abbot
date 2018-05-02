@@ -7,6 +7,7 @@ from pathlib import Path
 
 DATABASE_DDL = 'config/abbot.sqlite3.sql'
 ARCHIVE_SQL = 'sql/archive_db.sql'
+DATABASE_UPDATE_FOLDER = 'sql/updates'
 
 class AbbotDatabase:
     """
@@ -18,6 +19,7 @@ class AbbotDatabase:
         """
         self.databaseName = databaseName
         self.connection = None
+        self.databaseVersion = 0
         self.checkDB()
 
     def checkDB(self):
@@ -42,7 +44,7 @@ class AbbotDatabase:
                 try:
                     logger.debug("Trying to create database: {0}".format(self.databaseName))
                     ddl = open(DATABASE_DDL, 'r').read()
-                    self.connection = sqlite3.connect(self.databaseName)
+                    self.connect()
                     cur = self.connection.cursor()
                     cur.executescript(ddl)
 
@@ -57,11 +59,11 @@ class AbbotDatabase:
 
             if not dbFile.is_file(): # one more check to be sure database was created correctly.
                 self.connection = None
-        else:
-            logger.debug("Database file found.")
         
-        # TODO: Do a connection test/query to ensure database is correct.
         self.connect()
+        self.databaseVersion = self.getVersion()
+        logger.debug("Database version {0}.".format(self.databaseVersion))
+
         self.close()
 
     def archive(self):
@@ -72,7 +74,7 @@ class AbbotDatabase:
         try:
             logger.debug("Trying to archive the database: {0}".format(self.databaseName))
             sql = open(ARCHIVE_SQL, 'r').read()
-            self.connection = sqlite3.connect(self.databaseName)
+            self.connect()
             cur = self.connection.cursor()
             cur.executescript(sql)
 
@@ -114,6 +116,28 @@ class AbbotDatabase:
             self.connection = None
             return False
 
+    def getVersion(self):
+        """
+        Get the database version.
+        """
+        try:
+            version = 0
+            if self.connection == None:
+                self.connect()
+
+            self.connection.row_factory = sqlite3.Row
+            cur = self.connection.cursor()
+            cur.execute('pragma user_version') # the SQL used to get the user_version variable.
+            row = cur.fetchone() # There "should" only be one record!
+            if row != None:
+                version = row['user_version']
+
+            cur.close()
+
+        except Exception as ex:
+            logger.error("Problem getting database version: {0}".format(ex))
+        finally:
+            return version
 
 class Idea:
     """
@@ -1129,3 +1153,16 @@ class MentionUsageRank(UsageRank):
         """
         self.getRankings('role_mentions')
 
+if __name__ == "__main__":
+    logger = logging.getLogger('abbot')
+    logger.setLevel(logging.DEBUG)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s:%(message)s')
+    ch.setFormatter(formatter)
+    # add the handlers to logger
+    logger.addHandler(ch)
+
+    AbbotDatabase('abbot.sqlite3')
