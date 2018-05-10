@@ -1,4 +1,5 @@
 import datetime
+import inflect
 import logging
 logger = logging.getLogger('abbot')
 import os
@@ -756,7 +757,7 @@ class CommandUsage(BaseUsage):
         """
         sql = """select user, 
             command_name, 
-            sum(count) as count,
+            sum(count) as count
             from usage_commands """
         if self.server == None and self.user == None and self.channel == None:
             logger.error("Must supply at least user, server, or channel.")
@@ -907,6 +908,30 @@ class GenericRank:
         self.user = user
         self.type = rankType
         self.value = rankValue
+
+    @staticmethod
+    def rankIndicator(rank, numRankings):
+        """
+        This method returns a textual version of the rank.
+        """
+        result = None
+
+        # If the rank is 1, 2, or 3, there are special emojis for those.
+        if rank == 1:
+            result = ":first_place:"
+        elif rank == 2:
+            result = ":second_place:"
+        elif rank == 3:
+            result = ":third_place:"
+        elif rank < 10 and numRankings <= 10: # from 4-9, we'll add the emoji version of the rank/number.
+            p = inflect.engine()
+            result = ":{0}:".format(p.number_to_words(rank))
+        elif rank == 10 and numRankings <= 10:
+            result = ":keycap_ten:"
+        else: # If more than 10 rankings, we'll just return the actual string representation of the rank.
+            result = str(rank)
+
+        return result
 
 class MessageUsageRank(UsageRank):
     """
