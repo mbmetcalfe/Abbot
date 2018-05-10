@@ -653,14 +653,18 @@ class Abbot(discord.Client):
         """
         Gets usage information.  By default, shows your own usage for the current channel.
         Usage:
-            {command_prefix}usage [user mention] [server]
+            {command_prefix}usage [user mention|rank] [server]
         Examples:
-            ?usage 
+            {command_prefix}usage 
             Gets your own usage information for the current channel.
-            ?usage server
-            Gets your own usage information for the current server.
-            ?usage @abbot
+            {command_prefix}usage @abbot
             Gets the usage information for the user Abbot.
+            {command_prefix}usage server
+            Gets your own usage information for the current server.
+            {command_prefix}usage rank
+            Shows usage rankings for the current channel.
+            {command_prefix}usage server rank
+            Shows usage rankings for the current server (for all channels the bot is in).
             """
         if len(user_mentions) == 1:
             member = discord.utils.get(message.server.members, id=user_mentions[0].id)
@@ -745,8 +749,11 @@ class Abbot(discord.Client):
                 currentRank = 1
                 for rank in messageUsageRank.rankings:
                     # TODO: Pretty up the output!
-                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    rankWord = db.GenericRank.rankIndicator(currentRank, numRankings)
+
+                    rankingsOutput += "{0}: {1}........**{2}**\n".format(rankWord, 
+                        (discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.value)
                     currentRank += 1
 
                 em.add_field(name="Most Messages", value=rankingsOutput + "\n", inline=True)
@@ -760,8 +767,11 @@ class Abbot(discord.Client):
                 currentRank = 1
                 for rank in messageUsageRank.rankings:
                     # TODO: Pretty up the output!
-                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    rankWord = db.GenericRank.rankIndicator(currentRank, numRankings)
+
+                    rankingsOutput += "{0}: {1}........**{2}**\n".format(rankWord, 
+                        (discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.value)
                     currentRank += 1
 
                 em.add_field(name="Most Words", value=rankingsOutput + "\n", inline=True)
@@ -774,8 +784,11 @@ class Abbot(discord.Client):
                 currentRank = 1
                 for rank in messageUsageRank.rankings:
                     # TODO: Pretty up the output!
-                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    rankWord = db.GenericRank.rankIndicator(currentRank, numRankings)
+
+                    rankingsOutput += "{0}: {1}........**{2}**\n".format(rankWord, 
+                        (discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.value)
                     currentRank += 1
 
                 em.add_field(name="Most Characters", value=rankingsOutput + "\n", inline=True)
@@ -788,8 +801,11 @@ class Abbot(discord.Client):
                 currentRank = 1
                 for rank in messageUsageRank.rankings:
                     # TODO: Pretty up the output!
-                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    rankWord = db.GenericRank.rankIndicator(currentRank, numRankings)
+
+                    rankingsOutput += "{0}: {1}........**{2}**\n".format(rankWord, 
+                        (discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.value)
                     currentRank += 1
 
                 em.add_field(name="Longest Message", value=rankingsOutput + "\n", inline=True)
@@ -808,8 +824,11 @@ class Abbot(discord.Client):
                 currentRank = 1
                 for rank in mentionUsageRank.rankings:
                     # TODO: Pretty up the output!
-                    rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                        rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                    rankWord = db.GenericRank.rankIndicator(currentRank, numRankings)
+
+                    rankingsOutput += "{0}: {1}........**{2}**\n".format(rankWord, 
+                        (discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.value)
                     currentRank += 1
 
                 if currentRank > 0:
@@ -825,8 +844,11 @@ class Abbot(discord.Client):
                     # TODO: Pretty up the output!
                     if rank.value > 0:
                         currentRank += 1
-                        rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                            rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                        rankWord = db.GenericRank.rankIndicator(currentRank, numRankings)
+
+                        rankingsOutput += "{0}: {1}........**{2}**\n".format(rankWord, 
+                            (discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                            rank.value)
 
                 if currentRank > 0:
                     em.add_field(name="Most User Mentions", value=rankingsOutput + "\n", inline=True)
@@ -847,8 +869,12 @@ class Abbot(discord.Client):
                     # TODO: Pretty up the output!
                     if rank.value > 0:
                         currentRank += 1
-                        rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                            rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                        rankWord = db.GenericRank.rankIndicator(currentRank, numRankings)
+
+                        rankingsOutput += "{0}: {1}........**{2}**\n".format(rankWord, 
+                            (discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                            rank.value)
+
 
                 if currentRank > 0:
                     em.add_field(name="Reacted Most", value=rankingsOutput + "\n", inline=True)
@@ -863,8 +889,12 @@ class Abbot(discord.Client):
                     # TODO: Pretty up the output!
                     if rank.value > 0:
                         currentRank += 1
-                        rankingsOutput += "{2}: {0}........**{1}**\n".format((discord.utils.get(message.server.members, id=rank.user)).display_name, 
-                            rank.value, ":{0}:".format(p.number_to_words(currentRank)) if numRankings <= 10 else currentRank)
+                        rankWord = db.GenericRank.rankIndicator(currentRank, numRankings)
+
+                        rankingsOutput += "{0}: {1}........**{2}**\n".format(rankWord, 
+                            (discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                            rank.value)
+
 
                 if currentRank > 0:
                     em.add_field(name="Most Reacted User", value=rankingsOutput + "\n", inline=True)
