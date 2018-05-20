@@ -1267,12 +1267,12 @@ class Abbot(discord.Client):
 # Events
 # -----------
     async def on_member_update(self, before, after):
-        # logger.debug(" Before (After): {0.display_name} ({2.display_name}) Status: {0.status} ({2.status}) Game: {1} ({3}).".format(
-        #     before, 
-        #     before.game.name if before.game != None else "N/A",
-        #     after, 
-        #     after.game.name if after.game != None else "N/A"))
-        pass # for now.
+        if before.game != None and after.game != None and before.game.name != after.game.name:
+            logger.debug(" Before (After): {0.display_name} ({2.display_name}) Status: {0.status} ({2.status}) Game: {1} ({3}).".format(
+                before, 
+                before.game.name if before.game != None else "N/A",
+                after, 
+                after.game.name if after.game != None else "N/A"))
     
 # ---------
 #
