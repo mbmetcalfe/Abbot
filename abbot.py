@@ -436,11 +436,18 @@ class Abbot(discord.Client):
         em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
         return Response(em, reply=False, embed=True, delete_after=90)
 
-    async def cmd_joke(self, channel, author, message, permissions):
+    async def cmd_joke(self, channel, author, message, permissions, leftover_args):
         """
         Tell a joke.
         Usage:
+            {command_prefix}joke [type [joke type]]
+        Example:
             {command_prefix}joke
+            Gives a random joke from the available joke types.
+            {command_prefix}joke type
+            Displays the type of jokes available.
+            {command_prefix}joke type CleanJokes
+            Tells a joke of type CleanJokes.
         """
         
         #TODO: Have him get a random one once/day.
@@ -448,9 +455,28 @@ class Abbot(discord.Client):
         #TODO: decide on hot vs top vs new
 
         subreddit = 'Jokes' # default in case the next part fails to pick a valid subreddit
-        # First select a subreddit
-        if self.config.reddit_joke_subreddit_list:
-            subreddit = random.sample(self.config.reddit_joke_subreddit_list, 1)[0]
+
+        # Check for command arguments
+        if len(leftover_args) > 0:
+            if len(leftover_args) == 1 and leftover_args[0].lower() == "type":
+                em = discord.Embed(title='Joke Types', description='The following joke types can be chosen: {0}'.format(', '.join(self.config.reddit_joke_subreddit_list)), colour=0xf4d742)
+                em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
+                return Response(em, reply=False, embed=True, delete_after=90)
+            elif len(leftover_args) == 2 and leftover_args[0].lower() == "type":
+                subreddit = leftover_args[1]
+                # Not a valid option.
+                if subreddit.lower() not in [x.lower() for x in self.config.reddit_joke_subreddit_list]:
+                    em = discord.Embed(title='Joke Error', description='Invalid joke type.\n\nThe following joke types can be chosen: {0}'.format(', '.join(self.config.reddit_joke_subreddit_list)), colour=0xff0000)
+                    em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
+                    return Response(em, reply=False, embed=True, delete_after=90)
+            else:
+                em = discord.Embed(title='Joke Error', description='Invalid joke option.', colour=0xff0000)
+                em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
+                return Response(em, reply=False, embed=True, delete_after=90)
+        else:
+            # Choose a random subreddit
+            if self.config.reddit_joke_subreddit_list:
+                subreddit = random.sample(self.config.reddit_joke_subreddit_list, 1)[0]
             
         joke = self.get_reddit_post(subreddit)
 
