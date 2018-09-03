@@ -126,5 +126,5 @@ CREATE TABLE `usage_reactions_archive` (
 	PRIMARY KEY(`user`,`server`,`channel`)
 );
 
-pragma user_version = 1
+pragma user_version = 0
 COMMIT;
