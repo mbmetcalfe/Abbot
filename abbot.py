@@ -568,6 +568,40 @@ class Abbot(discord.Client):
         em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(author), icon_url=author.avatar_url)
         return Response(em, reply=False, embed=True, delete_after=90)
 
+    async def cmd_poll(self, channel, author, message, permissions, leftover_args):
+        """
+        Create a poll from the given list of items.  Separate each choice by a comma.
+        Usage:
+            {command_prefix}poll <choice1, choice2, ..., choiceN>
+        """
+        # Gather options from args.  Args is an array, so we have to join them together,
+        # then split them by ",".
+        pollOptions = [x.strip() for x in " ".join(leftover_args).title().split(',')]
+        # We will remove the duplicates too.
+        from collections import OrderedDict
+        pollOptions = list(OrderedDict.fromkeys(pollOptions))
+        
+        if len(pollOptions) == 1:
+            return Response(":exclamation: Must give two or more choices for this command to work correctly.", reply=True, delete_after=30)
+        elif len(pollOptions) > 10:
+            return Response(":exclamation: Maximum poll options is 10.", reply=True, delete_after=30)
+
+        i = 0
+        choices = ""
+        numberEmojis = ['1\u20e3', '2\u20e3', '3\u20e3', '4\u20e3', '5\u20e3', '6\u20e3', '7\u20e3', '8\u20e3', '9\u20e3', '\U0001f51f']
+        reactions = list()
+        for choice in pollOptions:
+            choices += '\n    **{0}**: {1}'.format(numberEmojis[i], choice.strip())
+            reactions.append(numberEmojis[i])
+            i += 1
+
+        em = discord.Embed(title='Poll', description='\n\nLet us see what everyone wants.')
+        em.add_field(name="Options", value=choices, inline=True)
+        em.set_footer(text='Please vote by selecting the appropriate button below this message.')
+        em.set_thumbnail(url='https://cdn.discordapp.com/attachments/279610788442800138/518616954802798593/poll.png')
+        
+        return Response(em, reply=False, embed=True, reactions=reactions)
+
     async def cmd_pick(self, channel, author, message, server, permissions):
         """
         Pick a random user from the server.
