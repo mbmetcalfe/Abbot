@@ -373,7 +373,7 @@ class Abbot(discord.Client):
         # wait_for_message is pretty neato
 
         if self.config.autojoin_channels:
-            await self._autojoin_channels(autojoin_channels)
+            await self._autojoin_channels(self.config.autojoin_channels)
 
         if self.config.auto_statuses:
             await self.update_presence("{0} | {1}help".format(
