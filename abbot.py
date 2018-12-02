@@ -218,8 +218,9 @@ class Abbot(discord.Client):
         except discord.NotFound:
             logger.warning("Cannot react to message in %s, invalid channel?" % message.channel)
         
-        except:
+        except Exception as e:
             logger.error("Could not react to message id {0} with {1}".format(message.id, emoji))
+            logger.debug("Unexpected error: {0}\n---------------------------------------------".format(str(e)))
 
         return reaction
 
