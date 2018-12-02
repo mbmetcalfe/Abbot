@@ -1103,20 +1103,36 @@ class Abbot(discord.Client):
             return
 
         #TODO: Add trigger text/reaction/complete match in configuration (consider possibility for regex in trigger)
-        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["cool", "kool", "kewl", "awesome"]):
+        # Add a reaction if a long message (atm, max length for a single message is 2000).
+        if len(message.content) > 1200:
+            emoji = random.choice(['📕', '📗', '📘', '📙', '📖'])
+            await self.safe_add_reaction(message, emoji)
+        
+        # Check for keywords and react accordingly.
+        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["cool", "kool", "kewl", "awesome", "great", "fantastic"]):
             emoji = random.choice(['😎', '🆒'])
             await self.safe_add_reaction(message, emoji)
         if "ok" == message.content.lower(): # complete match only
             emoji = random.choice(['👍', '👌', '🆗'])
             await self.safe_add_reaction(message, emoji)
-        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["shit", "crap", "poop", "turd"]):
-            emoji = '💩'
-            await self.safe_add_reaction(message, emoji)
-        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["haha", "lol"]):
-            emoji = random.choice(['😀', '😃', '😄', '😁', '😆', '😂', '😺', '😸'])
+        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["shit(\w+)?", "crap(\w+)?", "poop(\w+)?", "turd"]):
+            await self.safe_add_reaction(message, '💩')
+        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["(ha)+", "(lol)+", "lmao", "lmfao"]):
+            emoji = random.choice(['😀', '😃', '😄', '😁', '😆', '😂', '😝', '😹', '😺', '😸'])
             await self.safe_add_reaction(message, emoji)
         if "rofl" == message.content.lower():
-            emoji = '🤣'
+            await self.safe_add_reaction(message, '🤣')
+        if re.search(r'\b[Bb][oO][oO]+\b', message.content, re.IGNORECASE):
+            emoji = random.choice(['😱', '😨', '👻'])
+            await self.safe_add_reaction(message, emoji)
+        if "free" == message.content.lower():
+            await self.safe_add_reaction(message, '🆓')
+        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["sales?", "discounts?"]):
+            emoji = random.choice(['💲', '🏷', '🤑'])
+            await self.safe_add_reaction(message, emoji)
+        if any(re.search(r'\b{0}\b'.format(x), message.content, re.IGNORECASE) for x in ["fuck(\w+)?", "damn", "bitch", "piss", "dick(head|less)?", "cock", "pussy", "ass(hole|hat)?", "bastard", "slut", "douche"]):
+            # '🤬' is not recognized by Discord :(
+            emoji = random.choice(['🙉', '🙊'])
             await self.safe_add_reaction(message, emoji)
 
 #        if emoji != None:
