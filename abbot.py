@@ -555,7 +555,7 @@ class Abbot(discord.Client):
         
         userChoices = " ".join(leftover_args).split(",")
         
-        if len(userChoices) <= 2:
+        if len(userChoices) == 1:
             return Response(":exclamation: Must give two or more choices for this command to work correctly.", reply=True, delete_after=30)
 
         i = 1
