@@ -29,11 +29,12 @@ import db
 import event
 
 class Response:
-    def __init__(self, content, reply=False, embed=False, delete_after=0):
+    def __init__(self, content, reply=False, embed=False, delete_after=0, reactions=None):
         self.content = content
         self.reply = reply
         self.embed = embed
         self.delete_after = delete_after
+        self.reactions = reactions
 
 class Abbot(discord.Client):
     def __init__(self, config_file=ConfigDefaults.options_file, perms_file=PermissionsDefaults.perms_file):
@@ -177,13 +178,17 @@ class Abbot(discord.Client):
         except: # Can be ignored
             pass
 
-    async def safe_send_message(self, dest, content, *, tts=False, expire_in=0, also_delete=None, quiet=False, embed=False):
+    async def safe_send_message(self, dest, content, *, tts=False, expire_in=0, also_delete=None, quiet=False, embed=False, reactions=None):
         msg = None
         try:
             if embed:
                 msg = await self.send_message(dest, embed=content, tts=tts)
             else:
                 msg = await self.send_message(dest, content, tts=tts)
+
+            if msg and reactions:
+                for reaction in reactions:
+                    await self.safe_add_reaction(msg, reaction)
 
             if msg and expire_in:
                 asyncio.ensure_future(self._wait_delete_msg(msg, expire_in))
@@ -1487,7 +1492,8 @@ class Abbot(discord.Client):
                     message.channel, content,
                     expire_in=response.delete_after if self.config.delete_messages else 0,
                     also_delete=message if self.config.delete_invoking else None,
-                    embed = response.embed
+                    embed=response.embed,
+                    reactions=response.reactions
                 )
 
         except (exceptions.CommandError, exceptions.HelpfulError, exceptions.ExtractionError) as e:
