@@ -643,21 +643,27 @@ class Abbot(discord.Client):
             rolls = 1
             limit = 6
 
-        if random.randint(1, 5) == 5:
-            await self.safe_send_message(dest=channel, content='https://giphy.com/gifs/please-upvotes-ken-xR2SI8vqfQMLe',
-                expire_in=20,
-                also_delete=None
-                )
+        if rolls == 1 and limit == 1:
+            em = discord.Embed(title='Dice Roll', description=author.mention + ' has attempted to roll a one-sided die and ended up with...\n\n**ONE**!', colour=0x2e456b)
+            em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
+            em.set_thumbnail(url='https://www.propdog.co.uk/image/cache/data/accessories/dice/force-1-500x500.jpg')
+        else:
+            if random.randint(1, 5) == 5:
+                await self.safe_send_message(dest=channel, content='https://giphy.com/gifs/please-upvotes-ken-xR2SI8vqfQMLe',
+                    expire_in=20,
+                    also_delete=None
+                    )
 
-        result = ', '.join(str(random.randint(1, limit)) for r in range(rolls))
-        p = inflect.engine()
-        wordRolls = p.number_to_words(rolls)
+            result = ', '.join(str(random.randint(1, limit)) for r in range(rolls))
+            p = inflect.engine()
+            wordRolls = p.number_to_words(rolls)
 
-        await self.send_typing(channel)
-        await asyncio.sleep(rolls * 3) # simulate rolling the dice (~3 seconds/dice)
+            await self.send_typing(channel)
+            await asyncio.sleep(rolls * 3) # simulate rolling the dice (~3 seconds/dice)
+            em = discord.Embed(title='Dice Roll', description=author.mention + ' has rolled ' + wordRolls + ' ' + str(limit) + '-sided dice.\n\nThe result is: ' + result, colour=0x2e456b)
+            em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
+            em.set_thumbnail(url='https://dojmt.gov/wp-content/uploads/dice-2.png')
 
-        em = discord.Embed(title='Dice Roll', description=author.mention + ' has rolled ' + wordRolls + ' ' + str(limit) + '-sided dice.\n\nThe result is: ' + result, colour=0x2e456b)
-        em.set_footer(text='Requested by {0.name}#{0.discriminator}'.format(message.author), icon_url=author.avatar_url)
         return Response(em, reply=False, embed=True)
 
     async def cmd_rpsls(self, channel, author, message, permissions, item):
