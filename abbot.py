@@ -1192,32 +1192,34 @@ class Abbot(discord.Client):
         #TODO: Add a command to show leaderboard: longest single message, most messages, most typed characters, most commands used,
         #   most common command, least used command.
         #TODO: Add a command for generic stats, similar to the leaderboard.
-        #TODO: Consider a task to clean up data at the start of the month and/or push data to a "totals" table.
         #TODO: Log mentions (channel, user, role), reactions.
         #   on_reaction_add/on_reaction_remove
         #TODO: Consider reacting to on_message_edit and updating the stats accordingly (for non-commands only).
-        #TODO: Filter out/count link-only messages.
-        #   regex: ^((https?|ftps?|telnet|ssh|mailto):\/\/)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&\/= ]*)$
 
         if message.author.bot: # We don't really care to track bot usage
             return
 
+        urlPattern = re.compile(r'((https?|ftps?|telnet|ssh)://[^\s]+)\s?', re.IGNORECASE)
         content = message.content
         messageUsage = db.MessageUsage(self.database, message.author.id, message.server.id, message.channel.id)
+        messageUrls = urlPattern.findall(content)
+
         if messageUsage.lastMessageTimestamp == None:
             messageUsage.wordCount = len(content.split())
             messageUsage.characterCount = len(content)
             messageUsage.maxMessageLength = messageUsage.characterCount
             messageUsage.messageCount = 1
-            
+            messageUsage.urlCount = len(messageUrls)
             messageUsage.insert()
         else:
+            
             contentSize = len(content.split())
             charCount = len(content)
             messageUsage.wordCount += contentSize
             messageUsage.characterCount += charCount
             messageUsage.maxMessageLength = charCount if charCount > messageUsage.maxMessageLength else messageUsage.maxMessageLength
             messageUsage.messageCount += 1
+            messageUsage.urlCount += len(messageUrls)
             messageUsage.update()
 
         await self.log_mention_usage(message)
