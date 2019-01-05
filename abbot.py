@@ -771,6 +771,7 @@ class Abbot(discord.Client):
                     em.add_field(name='# of Words', value=messageUsage.wordCount, inline=True)
                     em.add_field(name='# of Characters', value=messageUsage.characterCount, inline=True)
                     em.add_field(name='Max Message', value=messageUsage.maxMessageLength, inline=True)
+                    em.add_field(name='# of Shared URLs', value=messageUsage.urlCount, inline=True)
                     em.add_field(name='Last Message', value=messageUsage.lastMessageTimestamp, inline=False)
             
             if not reactionUsage.newRecord: # If newRecord is true, then there is no reaction usage yet.
@@ -881,6 +882,23 @@ class Abbot(discord.Client):
                     currentRank += 1
 
                 em.add_field(name="Longest Message", value=rankingsOutput + "\n", inline=True)
+
+            # Get url count rankings
+            rankingsOutput = ""
+            messageUsageRank.getRankingsByUrlCount()
+            numRankings = len(messageUsageRank.rankings)
+            if len(messageUsageRank.rankings) > 0:
+                currentRank = 1
+                for rank in messageUsageRank.rankings:
+                    # TODO: Pretty up the output!
+                    rankWord = db.GenericRank.rankIndicator(currentRank, numRankings)
+
+                    rankingsOutput += "{0}: {1}........**{2}**\n".format(rankWord, 
+                        (discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                        rank.value)
+                    currentRank += 1
+
+                em.add_field(name="Most Shared Urls", value=rankingsOutput + "\n", inline=True)
 
             # --------------------------------------------------------------------------------------------------------------
             # Mentions Rankings
