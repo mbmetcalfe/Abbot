@@ -1033,6 +1033,12 @@ class MessageUsageRank(UsageRank):
         """
         self.getRankings('message_count')
 
+    def getRankingsByUrlCount(self):
+        """
+        Get the rankings by url count.
+        """
+        self.getRankings('url_count')
+
 class ReactionUsageRank(UsageRank):
     """
     This class is used to collect and report reaction usage rankings.
