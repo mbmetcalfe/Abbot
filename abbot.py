@@ -1203,6 +1203,8 @@ class Abbot(discord.Client):
         content = message.content
         messageUsage = db.MessageUsage(self.database, message.author.id, message.server.id, message.channel.id)
         messageUrls = urlPattern.findall(content)
+        # Remove the URLs from the message so they do not get counted in the stats.
+        content = urlPattern.sub('', content) if len(messageUrls) > 0 else content
 
         if messageUsage.lastMessageTimestamp == None:
             messageUsage.wordCount = len(content.split())
@@ -1212,7 +1214,6 @@ class Abbot(discord.Client):
             messageUsage.urlCount = len(messageUrls)
             messageUsage.insert()
         else:
-            
             contentSize = len(content.split())
             charCount = len(content)
             messageUsage.wordCount += contentSize
