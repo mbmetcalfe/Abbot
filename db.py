@@ -251,6 +251,7 @@ class MessageUsage(BaseUsage):
         self.characterCount = 0
         self.maxMessageLength = 0
         self.messageCount = 0
+        self.urlCount = 0
         self.lastMessageTimestamp = None
 
         if fetch:
@@ -266,6 +267,7 @@ class MessageUsage(BaseUsage):
             sum(word_count) as word_count, 
             sum(character_count) as character_count, 
             sum(max_message_length) as max_message_length, 
+            sum(url_count) as url_count, 
             max(last_message_timestamp) as last_message_timestamp 
             from usage_messages """
         if server == None and user == None and channel == None:
@@ -312,6 +314,7 @@ class MessageUsage(BaseUsage):
                     self.characterCount = row['character_count']
                     self.maxMessageLength = row['max_message_length']
                     self.lastMessageTimestamp = row['last_message_timestamp']
+                    self.urlCount = row['url_count']
                     self.newRecord = False
                 else:
                     self.newRecord = True
@@ -340,8 +343,9 @@ class MessageUsage(BaseUsage):
                 character_count, 
                 max_message_length, 
                 last_message_timestamp,
-                message_count
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"""
+                message_count,
+                url_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"""
         values = ()
 
         # Check that we have all the necessary data first.
@@ -353,7 +357,7 @@ class MessageUsage(BaseUsage):
             return False
         else:
             ts = datetime.datetime.now()
-            values = (self.user, self.server, self.channel, self.wordCount, self.characterCount, self.maxMessageLength, ts.strftime("%Y-%m-%d %H:%M:%S:%f"), self.messageCount)
+            values = (self.user, self.server, self.channel, self.wordCount, self.characterCount, self.maxMessageLength, ts.strftime("%Y-%m-%d %H:%M:%S:%f"), self.messageCount, self.urlCount)
 
         try:
             cur = self.database.connection.cursor()
@@ -378,7 +382,8 @@ class MessageUsage(BaseUsage):
                 character_count = ?, 
                 max_message_length = ?, 
                 last_message_timestamp = ?, 
-                message_count = ? 
+                message_count = ?,
+                url_count = ? 
             where user = ? and 
             server = ? and 
             channel = ?"""
@@ -393,7 +398,7 @@ class MessageUsage(BaseUsage):
             return False
         else:
             ts = datetime.datetime.now()
-            values = (self.wordCount, self.characterCount, self.maxMessageLength, ts.strftime("%Y-%m-%d %H:%M:%S:%f"), self.messageCount, self.user, self.server, self.channel)
+            values = (self.wordCount, self.characterCount, self.maxMessageLength, ts.strftime("%Y-%m-%d %H:%M:%S:%f"), self.messageCount, self.urlCount, self.user, self.server, self.channel)
 
         try:
             # self.database.connect()
