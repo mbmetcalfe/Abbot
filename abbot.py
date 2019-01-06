@@ -761,6 +761,8 @@ class Abbot(discord.Client):
             messageUsage = db.MessageUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id)
             reactionUsage = db.ReactionUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id)
             mentionUsage = db.MentionUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id)
+            validCommandUsage = db.CommandUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id, valid=1)
+            invalidCommandUsage = db.CommandUsage(database=self.database, user=member.id, server=message.server.id, channel=None if queryServer else message.channel.id, valid=0)
 
             em = discord.Embed(
                 title='{0} usage summary for {1.name}#{1.discriminator}'.format(target.upper(), member), colour=0x2e456b)
@@ -795,6 +797,15 @@ class Abbot(discord.Client):
                         em.add_field(name="# of Channels Mentioned", value=mentionUsage.channelMentions, inline=True)
                     if mentionUsage.roleMentions > 0:
                         em.add_field(name="# of Roles Mentioned", value=mentionUsage.roleMentions, inline=True)
+
+            if (not validCommandUsage.newRecord and validCommandUsage.count > 0) or (not invalidCommandUsage.newRecord and invalidCommandUsage.count > 0):
+                em.add_field(name="Command Summary", value="A review of {0}'s command usage.".format(member.display_name), inline=False)
+                if not validCommandUsage.newRecord:  # If newRecord is true, then there is no command usage.
+                    if validCommandUsage.count > 0:
+                        em.add_field(name="# of Valid Commands", value=validCommandUsage.count, inline=True)
+                if not invalidCommandUsage.newRecord:  # If newRecord is true, then there is no command usage.
+                    if invalidCommandUsage.count > 0:
+                        em.add_field(name="# of Invalid Commands", value=invalidCommandUsage.count, inline=True)
 
             if member.bot and message.author.id != self.config.owner_id: # Only owner can get bot usage.
                 em.description = "{0} does not want you to see that.".format(member.display_name)
@@ -1278,7 +1289,7 @@ class Abbot(discord.Client):
         """
         Log the command usage for the user.
         """
-        commandUsage = db.CommandUsage(self.database, message.author.id, message.server.id, message.channel.id, command, validCommand)
+        commandUsage = db.CommandUsage(database=self.database, user=message.author.id, server=message.server.id, channel=message.channel.id, commandName=command, valid=validCommand)
         if commandUsage.newRecord:
             commandUsage.insert()
         else:

@@ -743,7 +743,7 @@ class CommandUsage(BaseUsage):
     """
     This class represents a usage_commands record and can insert or update records.
     """
-    def __init__(self, database, user, server, channel, commandName, valid, fetch=True):
+    def __init__(self, database, user, server, channel, valid, commandName=None, fetch=True):
         """
         Create a model for the command usage.
         """
@@ -760,10 +760,9 @@ class CommandUsage(BaseUsage):
         Get the command usage information for the specific user/server/channel.
         At least one of user, server, or channel must be supplied.
         """
-        sql = """select user, 
-            command_name, 
-            sum(count) as count
-            from usage_commands """
+        sql = "select user, "
+        sql += "command_name, " if self.commandName != None else ""
+        sql += "sum(count) as count from usage_commands "
         if self.server == None and self.user == None and self.channel == None:
             logger.error("Must supply at least user, server, or channel.")
             return False
@@ -791,7 +790,8 @@ class CommandUsage(BaseUsage):
                 values += (self.commandName,)
 
         # Add in the group by
-        sql += "group by user, command_name "
+        sql += "group by user"
+        sql += ", command_name" if self.commandName != None else ""
 
         if self.database != None:
             try:
