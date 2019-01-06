@@ -1232,6 +1232,93 @@ class MentionUsageRank(UsageRank):
         """
         self.getRankings('role_mentions')
 
+class CommandUsageRank(UsageRank):
+    """
+    This class is used to collect and report command usage rankings.
+    """
+    def __init__(self, database, server, channel, maxRankings=5):
+        """
+        Initialize the command rank usage class.
+        """
+        UsageRank.__init__(self, database, server, channel, maxRankings)
+        self.rankings = []
+
+    def getRankings(self, columnName):
+        """
+        Get the ranking information for the specific user/server/channel for the identified column.
+        At least one of user, server, or channel must be supplied.
+        Possible values for columnName: command_name, valid
+        """
+        self.rankings.clear()
+        sql = """select user, 
+            sum({column_name}) as {column_name} 
+            from usage_commands """.format(column_name=columnName)
+        if self.server == None and self.channel == None:
+            logger.error("Must supply at least server, or channel.")
+            return False
+        else:
+            # Build the where clause
+            sql += "where "
+            values = ()
+
+            if self.server != None:
+                sql += "server = ? "
+                values += (self.server,)
+
+            if self.channel != None:
+                sql += " and " if len(values) > 0 else ""
+                sql += "channel = ? "
+                values += (self.channel,)
+
+            # if self.commandName != None:
+            #     sql += " and " if len(values) > 0 else ""
+            #     sql += "command_name = ? "
+            #     values += (self.commandName,)
+
+        # Add in the group by
+        sql += "group by user "
+
+        # Add in the order by
+        sql += "order by {column_name} desc, user asc ".format(column_name=columnName)
+        # Add the limit
+        sql += "limit ?"
+        values += (self.maxRankings,)
+
+        if self.database != None:
+            try:
+                # Check that we have all the necessary data first.
+                if self.database.connection == None:
+                    self.database.connect()
+
+                self.database.connection.row_factory = sqlite3.Row
+                cur = self.database.connection.cursor()
+                cur.execute(sql, values)
+                for row in cur:
+                    rank = GenericRank(row['user'], columnName, row[columnName])
+                    self.rankings.append(rank)
+                
+                cur.close()
+                return True
+
+            except Exception as ex:
+                logger.error("Problem getting command usage: {0}".format(ex))
+                return False
+        else:
+            logger.error("No valid DB connection available.")
+            return False
+
+    def getRankingsByCommandName(self):
+        """
+        Get the rankings by command name.
+        """
+        self.getRankings('command_name')
+
+    def getRankingsByValidCommand(self):
+        """
+        Get the rankings by valid command.
+        """
+        self.getRankings('valid')
+
 if __name__ == "__main__":
     # Having this code in here allows to debug/test the database integration without needing to run the bot.
     logger = logging.getLogger('abbot')
