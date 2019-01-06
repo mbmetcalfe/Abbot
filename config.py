@@ -85,7 +85,7 @@ class Config:
         self.delete_messages  = config.getboolean('Abbot', 'DeleteMessages', fallback=ConfigDefaults.delete_messages)
         self.delete_invoking = config.getboolean('Abbot', 'DeleteInvoking', fallback=ConfigDefaults.delete_invoking)
         self.debug_mode = config.getboolean('Abbot', 'DebugMode', fallback=ConfigDefaults.debug_mode)
-        self.auto_status =  config.get('Abbot', 'AutoStatus', fallback=ConfigDefaults.auto_status)
+        self.auto_status =  config.getint('Abbot', 'AutoStatus', fallback=ConfigDefaults.auto_status)
         self.auto_statuses =  config.get('Abbot', 'AutoStatuses', fallback=ConfigDefaults.auto_statuses)
         self.database_name = config.get('Abbot', 'Database', fallback=ConfigDefaults.database_name)
 
