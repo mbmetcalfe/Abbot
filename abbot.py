@@ -1279,11 +1279,11 @@ class Abbot(discord.Client):
         Log the command usage for the user.
         """
         commandUsage = db.CommandUsage(self.database, message.author.id, message.server.id, message.channel.id, command, validCommand)
-        # if commandUsage.newRecord:
-        #     commandUsage.insert()
-        # else:
-        #     commandUsage.count += 1
-        #     commandUsage.update()
+        if commandUsage.newRecord:
+            commandUsage.insert()
+        else:
+            commandUsage.count += 1
+            commandUsage.update()
 
     async def log_mention_usage(self, message):
         """

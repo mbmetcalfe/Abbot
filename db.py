@@ -786,6 +786,10 @@ class CommandUsage(BaseUsage):
                 sql += " and channel = ? "
                 values += (self.channel,)
 
+            if self.commandName != None:
+                sql += " and command_name = ? "
+                values += (self.commandName,)
+
         # Add in the group by
         sql += "group by user, command_name "
 
@@ -861,7 +865,7 @@ class CommandUsage(BaseUsage):
         and channel set the update cannot be done.
         """
         updateSQL = """update usage_commands
-            set count = ?, 
+            set count = ? 
             where user = ? and 
                 server = ? and 
                 channel = ? and 
@@ -1241,4 +1245,4 @@ if __name__ == "__main__":
     # add the handlers to logger
     logger.addHandler(ch)
 
-    AbbotDatabase('abbot.sqlite3')
+    database = AbbotDatabase('abbot.sqlite3')
