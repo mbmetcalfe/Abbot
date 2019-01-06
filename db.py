@@ -1307,11 +1307,11 @@ class CommandUsageRank(UsageRank):
             logger.error("No valid DB connection available.")
             return False
 
-    def getRankingsByCommandName(self):
+    def getRankingsByCount(self):
         """
         Get the rankings by command name.
         """
-        self.getRankings('command_name')
+        self.getRankings('count')
 
     def getRankingsByValidCommand(self):
         """

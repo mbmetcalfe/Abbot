@@ -1001,6 +1001,30 @@ class Abbot(discord.Client):
                     em.add_field(name="Most Reacted User", value=rankingsOutput + "\n", inline=True)
 
             # --------------------------------------------------------------------------------------------------------------
+            # Command Rankings
+            # --------------------------------------------------------------------------------------------------------------
+            commandUsageRank = db.CommandUsageRank(database=self.database, server=message.server.id, channel=None if queryServer else message.channel.id, maxRankings=5)
+
+            # Get user reacted rankings
+            rankingsOutput = ""
+            commandUsageRank.getRankingsByCount()
+            numRankings = len(commandUsageRank.rankings)
+            p = inflect.engine()
+            if numRankings > 0:
+                currentRank = 0
+                for rank in commandUsageRank.rankings:
+                    if rank.value > 0:
+                        currentRank += 1
+                        rankWord = db.GenericRank.rankIndicator(currentRank, numRankings)
+
+                        rankingsOutput += "{0}: {1}........**{2}**\n".format(rankWord, 
+                            (discord.utils.get(message.server.members, id=rank.user)).display_name, 
+                            rank.value)
+
+                if currentRank > 0:
+                    em.add_field(name="Most Commands Issued", value=rankingsOutput + "\n", inline=True)
+
+            # --------------------------------------------------------------------------------------------------------------
             # Wrap it up.
             # --------------------------------------------------------------------------------------------------------------
             if len(em.fields) == 0:
