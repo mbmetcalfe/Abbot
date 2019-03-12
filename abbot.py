@@ -1411,7 +1411,7 @@ class Abbot(discord.Client):
 # Events
 # -----------
     async def on_member_update(self, before, after):
-        if before.game != None and after.game != None and before.game.name != after.game.name:
+        if not (before.bot or after.bot) and before.game != None and after.game != None and before.game.name != after.game.name:
             logger.debug(" Before (After): {0.display_name} ({2.display_name}) Status: {0.status} ({2.status}) Game: {1} ({3}).".format(
                 before, 
                 before.game.name if before.game != None else "N/A",
@@ -1642,8 +1642,11 @@ class Abbot(discord.Client):
             # TODO: Add config for how long to wait until changing status.
             await asyncio.sleep(60 * self.config.auto_status) # Number of minutes to sleep and change status
 
-if __name__ == '__main__':
+def run_bot():
+    bot = Abbot()
+    bot.run()
 
+if __name__ == '__main__':
     # Setup logging
     logger = logging.getLogger('abbot')
     logger.setLevel(logging.DEBUG)
@@ -1661,5 +1664,5 @@ if __name__ == '__main__':
     logger.addHandler(ch)
     logger.addHandler(fh)
 
-    bot = Abbot()
-    bot.run()
+    run_bot()
+    os.execv(__file__, sys.argv)  # Run a new iteration of the current script, providing any command line args from the current iteration.
